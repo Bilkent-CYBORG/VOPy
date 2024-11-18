@@ -13,10 +13,10 @@ Welcome to VOPy, an open-source Python library built to tackle the challenges of
 
 .. toctree::
    :glob:
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Examples:
 
-   examples/**/index
+   ../../../examples/**/index
 
 .. toctree::
    :maxdepth: 1
