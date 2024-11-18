@@ -1,4 +1,4 @@
-Basic Order example
+Basic Vector Optimization
 ==============
 
 This notebook contains a basic vector optimization example with Naive Elimination algorithm.
