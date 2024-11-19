@@ -74,7 +74,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["**.ipynb_checkpoints", "examples/index.rst"]
+exclude_patterns = ["examples/**/*.ipynb"]
 
 primary_domain = "py"  # Set the primary domain as Python globally to omit `py` prefix in docs.
 
