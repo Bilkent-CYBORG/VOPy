@@ -5,7 +5,6 @@
 
 import os
 import sys
-import json
 import shutil
 
 sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
@@ -55,18 +54,6 @@ for root, dirs, files in os.walk(examples_source):
             else:
                 shutil.copyfile(source_filename, dest_filename)
 
-                if dest_filename.endswith(".ipynb"):
-                    with open(dest_filename, "r", encoding="utf-8") as f:
-                        notebook = json.load(f)
-
-                    # Add "nbsphinx" metadata if it doesn't exist
-                    notebook.setdefault("metadata", {}).setdefault("nbsphinx", {})["orphan"] = True
-
-                    # Save the updated notebook
-                    with open(dest_filename, "w", encoding="utf-8") as f:
-                        json.dump(notebook, f, ensure_ascii=False, indent=1)
-
-
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -86,7 +73,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["**.ipynb_checkpoints", "examples/index.rst"]
+exclude_patterns = ["examples/**/index.rst"]
 
 primary_domain = "py"  # Set the primary domain as Python globally to omit `py` prefix in docs.
 

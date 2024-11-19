@@ -16,7 +16,7 @@ Welcome to VOPy, an open-source Python library built to tackle the challenges of
    :maxdepth: 2
    :caption: Examples:
 
-   examples/**/*.ipynb
+   examples/**/*
 
 .. toctree::
    :maxdepth: 1
