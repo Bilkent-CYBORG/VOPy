@@ -15,9 +15,8 @@ Welcome to VOPy, an open-source Python library built to tackle the challenges of
    :glob:
    :maxdepth: 2
    :caption: Examples:
-   
-   :ref:`examples/basic_order.ipynb`
-   :ref:`examples/vector_optimization.ipynb`
+
+   examples/**/*.ipynb
 
 .. toctree::
    :maxdepth: 1
