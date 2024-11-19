@@ -54,6 +54,7 @@ for root, dirs, files in os.walk(examples_source):
             else:
                 shutil.copyfile(source_filename, dest_filename)
 
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -73,7 +74,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["examples/**/index.rst"]
+exclude_patterns = ["**.ipynb_checkpoints", "examples/index.rst"]
 
 primary_domain = "py"  # Set the primary domain as Python globally to omit `py` prefix in docs.
 
