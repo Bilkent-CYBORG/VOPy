@@ -84,3 +84,6 @@ primary_domain = "py"  # Set the primary domain as Python globally to omit `py` 
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+html_js_files = [
+    "hide_code_cells.js",
+]
