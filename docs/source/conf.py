@@ -71,7 +71,6 @@ extensions = [
     "notfound.extension",
     "sphinx.ext.mathjax",
     "nbsphinx",
-    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 templates_path = ["_templates"]
