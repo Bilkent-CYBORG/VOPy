@@ -1,3 +1,5 @@
+// Taken and adapted from: https://mmore500.com/2023/12/20/nbsphinx-code-toggle.html
+
 document.addEventListener("DOMContentLoaded", () => {
     // Function to create and append a toggle button to a div
     const addToggleButton = (div) => {
@@ -22,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
             fontSize: "0.9em",
             width: "100%",
             maxWidth: "100px",
-            transition: "max-width 0.5s ease, background-color 1s ease"
+            // transition: "max-width 0.5s ease, background-color 1s ease"
         });
     };
 
@@ -32,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
             opacity: '0',
             maxHeight: '0px',
             overflow: 'hidden',
-            transition: 'opacity 0.2s ease, max-height 0.6s ease'
+            // transition: 'opacity 0.2s ease, max-height 0.6s ease'
         });
     };
 
@@ -40,12 +42,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const addClickEvent = (button, div) => {
         button.onclick = () => {
             if (div.style.maxHeight === '0px') {
+                // Object.assign(div.style, {
+                //     opacity: '1',
+                //     maxHeight: '50000px',
+                // });
+                // button.textContent = "»» Hide Code ««";
+                // button.style.maxWidth = "100%";
                 Object.assign(div.style, {
                     opacity: '1',
-                    maxHeight: '50000px',
+                    maxHeight: '5000px',  // This may limit the visibility of very long code cells.
                 });
-                button.textContent = "»» Hide Code ««";
-                button.style.maxWidth = "100%";
+                button.textContent = "Hide Code «";
+                button.style.maxWidth = "100px";
             } else {
                 Object.assign(div.style, {
                     opacity: '0',
@@ -59,8 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Insert the toggle button above the div
     const insertButtonAboveDiv = (div, button) => {
-        const hr = document.createElement("hr");
-        div.parentNode.insertBefore(hr, div);
+        // const hr = document.createElement("hr");
+        // div.parentNode.insertBefore(hr, div);
         div.parentNode.insertBefore(button, div);
     };
 
