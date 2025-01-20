@@ -74,13 +74,15 @@ class OrderingCone:
             x = x.reshape(1, -1)
         return (x @ self.W.T >= 0).all(axis=-1)
 
-    def plot(self, path: Optional[Union[str, PathLike]] = None) -> plt.Figure:
+    def plot(self, path: Optional[Union[str, PathLike]] = None, **kwargs) -> plt.Figure:
         """
         Generate a plot of the ordering cone if the cone is 2D or 3D.
 
         :param path: The file path where the plot will be saved. If not provided, the plot
             will only be displayed. Defaults to `None`.
         :type path: Optional[Union[str, PathLike]]
+        :param kwargs: Additional keyword arguments to pass to the plotting function.
+        :type kwargs: dict
         :return: The matplotlib figure containing the plot.
         :rtype: plt.Figure
 
@@ -90,9 +92,9 @@ class OrderingCone:
             raise ValueError("Only 2D and 3D plots are supported.")
 
         if self.dim == 2:
-            fig = plot_2d_cone(self.is_inside, path)
+            fig = plot_2d_cone(self.is_inside, path, **kwargs)
         else:
-            fig = plot_3d_cone(self.is_inside, path)
+            fig = plot_3d_cone(self.is_inside, path, **kwargs)
 
         return fig
 
