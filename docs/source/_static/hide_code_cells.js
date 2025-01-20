@@ -18,10 +18,10 @@ document.addEventListener("DOMContentLoaded", () => {
             color: "#333333",
             border: "1px solid #DDD",
             padding: "2px 5px",
-            marginTop: "5px",
+            // marginTop: "5px",
             cursor: "pointer",
             borderRadius: "3px",
-            fontSize: "0.9em",
+            fontSize: "0.8em",
             width: "100%",
             maxWidth: "100px",
             // transition: "max-width 0.5s ease, background-color 1s ease"

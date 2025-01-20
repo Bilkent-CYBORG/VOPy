@@ -90,7 +90,9 @@ def plot_2d_theta_cone(
 
 
 def plot_2d_cone(
-    cone_membership: Callable[[np.ndarray], np.ndarray], path: Optional[Union[str, PathLike]] = None
+    cone_membership: Callable[[np.ndarray], np.ndarray],
+    path: Optional[Union[str, PathLike]] = None,
+    density: int = 50,
 ) -> plt.Figure:
     """
     Plot the 2D cone by checking membership of the points in the cone.
@@ -104,6 +106,8 @@ def plot_2d_cone(
     :type cone_membership: Callable[[np.ndarray], np.ndarray]
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
+    :param density: The number of points to sample along each axis for plotting.
+    :type density: int
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -123,8 +127,8 @@ def plot_2d_cone(
     ax.plot([xlim[0], xlim[1]], [0, 0], [0, 0], color="black")
     ax.plot([0, 0], [ylim[0], ylim[1]], [0, 0], color="black")
 
-    x_pts = np.linspace(xlim[0], xlim[1], 25)
-    y_pts = np.linspace(ylim[0], ylim[1], 25)
+    x_pts = np.linspace(xlim[0], xlim[1], density)
+    y_pts = np.linspace(ylim[0], ylim[1], density)
 
     X, Y = np.meshgrid(x_pts, y_pts)
     pts = np.vstack([X.ravel(), Y.ravel()]).T
@@ -140,7 +144,9 @@ def plot_2d_cone(
 
 
 def plot_3d_cone(
-    cone_membership: Callable[[np.ndarray], np.ndarray], path: Optional[Union[str, PathLike]] = None
+    cone_membership: Callable[[np.ndarray], np.ndarray],
+    path: Optional[Union[str, PathLike]] = None,
+    density: int = 50,
 ) -> plt.Figure:
     """
     Plot the 3D cone by checking membership of the points in the cone.
@@ -154,6 +160,8 @@ def plot_3d_cone(
     :type cone_membership: Callable[[np.ndarray], np.ndarray]
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
+    :param density: The number of points to sample along each axis for plotting.
+    :type density: int
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -179,9 +187,9 @@ def plot_3d_cone(
     ax.plot([0, 0], [ylim[0], ylim[1]], [0, 0], color="black")
     ax.plot([0, 0], [0, 0], [zlim[0], zlim[1]], color="black")
 
-    x_pts = np.linspace(xlim[0], xlim[1], 25)
-    y_pts = np.linspace(ylim[0], ylim[1], 25)
-    z_pts = np.linspace(zlim[0], zlim[1], 25)
+    x_pts = np.linspace(xlim[0], xlim[1], density)
+    y_pts = np.linspace(ylim[0], ylim[1], density)
+    z_pts = np.linspace(zlim[0], zlim[1], density)
 
     X, Y, Z = np.meshgrid(x_pts, y_pts, z_pts)
     pts = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
