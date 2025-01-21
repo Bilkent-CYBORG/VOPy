@@ -66,6 +66,7 @@ author = "Cahit Yildirim"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.autosectionlabel",
     "sphinx.ext.autodoc",
     "sphinx_rtd_theme",
     "notfound.extension",
@@ -83,3 +84,6 @@ primary_domain = "py"  # Set the primary domain as Python globally to omit `py` 
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+html_js_files = [
+    "hide_code_cells.js",
+]
