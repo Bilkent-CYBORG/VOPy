@@ -17,6 +17,11 @@ References:
     Zuluaga, Milder, Püschel.
     Computer generation of streaming sorting networks.
     Design Automation Conference, 2012.
+
+.. [Grari2024]
+    Grari, Laugel, Hashimoto, Lamprier, Detyniecki.
+    On the Fairness ROAD: Robust Optimization for Adversarial Debiasing.
+    International Conference on Learning Representations, 2024.
 """
 
 from abc import ABC
@@ -74,28 +79,6 @@ def get_dataset_instance(dataset_name: str) -> Dataset:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
 
 
-class Test(Dataset):
-    """
-    A miniature DiscBrake dataset variant for using in testing.
-
-    - _in_dim = 4
-    - _out_dim = 2
-    - _cardinality = 32
-    """
-
-    _in_dim = 4
-    _out_dim = 2
-    _cardinality = 32
-
-    def __init__(self):
-        data_file = files("vopy.datasets.data").joinpath("test.npy")
-        data = np.load(data_file, allow_pickle=True)
-        self.out_data = np.copy(data[:, self._in_dim :])
-        self.in_data = np.copy(data[:, : self._in_dim])
-
-        super().__init__()
-
-
 class SNW(Dataset):
     """
     Dataset for optimizing sorting network configurations in computational hardware design.
@@ -125,7 +108,8 @@ class SNW(Dataset):
 
 class DiscBrake(Dataset):
     """
-    Disc brake optimization balancing mass and stopping time. Based on [Tanabe2020]_.
+    Disc brake optimization balancing mass and stopping time. Based on [Tanabe2020]_. Both
+    objectives are negated.
 
     - _in_dim = 4
     - _out_dim = 2
@@ -138,6 +122,28 @@ class DiscBrake(Dataset):
 
     def __init__(self):
         data_file = files("vopy.datasets.data").joinpath("brake.npy")
+        data = np.load(data_file, allow_pickle=True)
+        self.out_data = np.copy(data[:, self._in_dim :])
+        self.in_data = np.copy(data[:, : self._in_dim])
+
+        super().__init__()
+
+
+class Test(Dataset):
+    """
+    A miniature DiscBrake dataset variant for using in testing.
+
+    - _in_dim = 4
+    - _out_dim = 2
+    - _cardinality = 32
+    """
+
+    _in_dim = 4
+    _out_dim = 2
+    _cardinality = 32
+
+    def __init__(self):
+        data_file = files("vopy.datasets.data").joinpath("test.npy")
         data = np.load(data_file, allow_pickle=True)
         self.out_data = np.copy(data[:, self._in_dim :])
         self.in_data = np.copy(data[:, : self._in_dim])
@@ -164,5 +170,32 @@ class VehicleSafety(Dataset):
         data = np.load(data_file, allow_pickle=True)
         self.out_data = np.copy(data[:, self._in_dim :])
         self.in_data = np.copy(data[:, : self._in_dim])
+
+        super().__init__()
+
+
+class Fairness(Dataset):
+    """
+    Dataset for optimizing fairness in machine learning (specifically ROAD approach). The reward
+    vector represents the trade-off between global disparate impact and global accuracy.
+    See [Grari2023]_. Disparate impact is negated.
+
+    - _in_dim = 2
+    - _out_dim = 2
+    - _cardinality = 200
+    """
+
+    _in_dim = 2
+    _out_dim = 2
+    _cardinality = 200
+
+    def __init__(self):
+        data_file = files("vopy.datasets.data").joinpath("fairness.npy")
+        data = np.load(data_file, allow_pickle=True)
+        self.out_data = np.copy(data[:, self._in_dim :])
+        self.in_data = np.copy(data[:, : self._in_dim])
+
+        # Negate first objective to maximize
+        self.out_data[:, 0] = -self.out_data[:, 0]
 
         super().__init__()
