@@ -40,7 +40,7 @@ class DecoupledGP(Algorithm):
         >>>
         >>> noise_var = 0.01
         >>> cost_budget = 64
-        >>> dataset_name = "DiskBrake"
+        >>> dataset_name = "DiscBrake"
         >>> order_right = ComponentwiseOrder(2)
         >>>
         >>> algorithm = DecoupledGP(

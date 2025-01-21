@@ -76,7 +76,7 @@ def get_dataset_instance(dataset_name: str) -> Dataset:
 
 class Test(Dataset):
     """
-    A miniature DiskBrake dataset variant for using in testing.
+    A miniature DiscBrake dataset variant for using in testing.
 
     - _in_dim = 4
     - _out_dim = 2
@@ -123,7 +123,7 @@ class SNW(Dataset):
         super().__init__()
 
 
-class DiskBrake(Dataset):
+class DiscBrake(Dataset):
     """
     Disc brake optimization balancing mass and stopping time. Based on [Tanabe2020]_.
 

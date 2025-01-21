@@ -45,7 +45,7 @@ class EpsilonPAL(PALAlgorithm):
         >>> from vopy.algorithms import EpsilonPAL
         >>>
         >>> epsilon, delta, noise_var = 0.1, 0.05, 0.01
-        >>> dataset_name = "DiskBrake"
+        >>> dataset_name = "DiscBrake"
         >>>
         >>> algorithm = EpsilonPAL(epsilon, delta, dataset_name, noise_var)
         >>>

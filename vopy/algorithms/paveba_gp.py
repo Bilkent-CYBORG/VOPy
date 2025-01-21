@@ -51,7 +51,7 @@ class PaVeBaGP(PALAlgorithm):
         >>> from vopy.algorithms import PaVeBaGP
         >>>
         >>> epsilon, delta, noise_var = 0.1, 0.05, 0.01
-        >>> dataset_name = "DiskBrake"
+        >>> dataset_name = "DiscBrake"
         >>> order_right = ComponentwiseOrder(2)
         >>>
         >>> algorithm = PaVeBaGP(epsilon, delta, dataset_name, order_right, noise_var)

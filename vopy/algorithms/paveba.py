@@ -38,7 +38,7 @@ class PaVeBa(PALAlgorithm):
         >>> from vopy.algorithms import PaVeBa
         >>>
         >>> epsilon, delta, noise_var = 0.1, 0.05, 0.01
-        >>> dataset_name = "DiskBrake"
+        >>> dataset_name = "DiscBrake"
         >>> order_right = ComponentwiseOrder(2)
         >>>
         >>> algorithm = PaVeBa(epsilon, delta, dataset_name, order_right, noise_var)
