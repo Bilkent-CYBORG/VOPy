@@ -12,6 +12,8 @@ Welcome to VOPy, an open-source Python library built to tackle the challenges of
 
 **Before starting:** To better understand why you would do vector optimization and how VOPy is helpful, please first check our `motivating example <examples/01_motivating_example.ipynb>`_. You can then traverse through other examples to get a better understanding of VOPy.
 
+**Before starting:** To better understand why you would do vector optimization and how VOPy is helpful, please first check our `motivating example <examples/01_motivating_example.ipynb>`_. You can then traverse through other examples to get a better understanding of VOPy.
+
 .. image:: _static/vopy_deps.jpg
     :alt: Overview of the dependencies, core modules, and built-in algorithms of VOPy.
     :width: 600px
