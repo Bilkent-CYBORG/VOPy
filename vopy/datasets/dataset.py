@@ -176,7 +176,8 @@ class VehicleSafety(Dataset):
 
 class Fairness(Dataset):
     """
-    Dataset for optimizing fairness in machine learning (specifically ROAD approach). The reward
+    Dataset for optimizing fairness in machine learning. Dataset consists of possible
+    hyperparameter selections of ROAD approach on a neural network architecture. The reward
     vector represents the trade-off between global disparate impact and global accuracy.
     See [Grari2024]_. Disparate impact is negated.
 
