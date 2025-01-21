@@ -178,7 +178,7 @@ class Fairness(Dataset):
     """
     Dataset for optimizing fairness in machine learning (specifically ROAD approach). The reward
     vector represents the trade-off between global disparate impact and global accuracy.
-    See [Grari2023]_. Disparate impact is negated.
+    See [Grari2024]_. Disparate impact is negated.
 
     - _in_dim = 2
     - _out_dim = 2
