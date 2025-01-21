@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ### What is VOPy?
-VOPy is an open-source Python library built to address noisy black-box vector optimization problems, where the user preferences are encoded with a cone order.
+VOPy is an open-source Python library built to address noisy black-box [vector optimization](https://en.wikipedia.org/wiki/Vector_optimization) problems, where the user preferences are encoded with a cone order.
 
 <p align="center">
   <img src="docs/source/_static/vopy_deps.jpg" alt="Overview of the dependencies, core modules, and built-in algorithms of VOPy" width="600px">
@@ -20,7 +20,7 @@ VOPy includes several pre-implemented algorithms, models, orders, and problems f
 
 ### How To Start?
 
-Visit our [**website**](https://vopy.readthedocs.io/en/latest/) to see tutorials, examples and API references on how to use VOPy.
+Visit our [**website**](https://vopy.readthedocs.io/en/latest/) to see tutorials, examples and API references on how to use VOPy. We recommend starting out with the [**motivating example**](https://vopy.readthedocs.io/en/latest/examples/01_motivating_example.html).
 
 
 ### Setup
