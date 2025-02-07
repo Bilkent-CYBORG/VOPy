@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from vopy.datasets import Dataset
 from vopy.utils import get_closest_indices_from_points, get_noisy_evaluations_chol
@@ -16,9 +17,14 @@ class Problem(ABC):
     for evaluating solutions in a given problem space.
 
     .. note::
-        Classes derived from :class:`Problem` must implement the :meth:`evaluate` method.
+        Classes derived from :class:`Problem` must implement the :meth:`evaluate` method. Also,
+        they should have the following attributes defined:
+
+    - :obj:`out_dim`: :type:`int`
 
     """
+
+    out_dim: int
 
     def __init__(self) -> None:
         super().__init__()
@@ -34,6 +40,36 @@ class Problem(ABC):
         :rtype: np.ndarray
         """
         pass
+
+
+class FixedPointsProblem(Problem):
+    """ """
+
+    def __init__(self, in_points: ArrayLike, objective: Callable):
+        super().__init__()
+
+        self.in_data = in_points
+        self.objective = objective
+
+    def evaluate(self, x: np.ndarray) -> np.ndarray:
+        """
+        Evaluates the problem at given points.
+
+        :param x: The input points to evaluate, given as an array of shape (N, in_dim).
+        :type x: np.ndarray
+        :return: An array of shape (N, out_dim) representing the evaluated output.
+        :rtype: np.ndarray
+        """
+        if x.ndim <= 1:
+            x = x.reshape(1, -1)
+
+        n_evals = x.shape[0]
+
+        y = np.empty((n_evals, self.out_dim))
+        for eval_i in range(n_evals):
+            y[eval_i] = self.objective
+
+        return y
 
 
 class ProblemFromDataset(Problem):
@@ -87,15 +123,11 @@ class ProblemFromDataset(Problem):
 class ContinuousProblem(Problem):
     """
     Abstract base class for continuous optimization problems. It includes noise handling for
-    outputs based on a specified noise variance. It should have the following attribute defined:
-
-    - :obj:`out_dim`: :type:`int`
+    outputs based on a specified noise variance.
 
     :param noise_var: The variance of the noise to be added to the outputs.
     :type noise_var: float
     """
-
-    out_dim: int
 
     def __init__(self, noise_var: float) -> None:
         super().__init__()
