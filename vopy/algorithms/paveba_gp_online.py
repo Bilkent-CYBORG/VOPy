@@ -1,21 +1,14 @@
 import logging
-from typing import Literal
 
 import numpy as np
 
-from vopy.acquisition import optimize_acqf_discrete, SumVarianceAcquisition
-from vopy.algorithms.algorithm import PALAlgorithm
-from vopy.confidence_region import confidence_region_is_covered, confidence_region_is_dominated
-from vopy.datasets import get_dataset_instance
-from vopy.design_space import FixedPointsDesignSpace
-from vopy.maximization_problem import Problem, ProblemFromDataset
-from vopy.models import (
-    CorrelatedExactGPyTorchModel,
-    get_gpytorch_model_w_known_hyperparams,
-    IndependentExactGPyTorchModel,
-)
-
 from vopy.order import PolyhedralConeOrder
+from vopy.algorithms.algorithm import PALAlgorithm
+from vopy.design_space import FixedPointsDesignSpace
+from vopy.models import IndependentExactGPyTorchModel
+from vopy.maximization_problem import FixedPointsProblem
+from vopy.acquisition import optimize_acqf_discrete, SumVarianceAcquisition
+from vopy.confidence_region import confidence_region_is_covered, confidence_region_is_dominated
 
 
 class PaVeBaGPOnline(PALAlgorithm):
@@ -26,12 +19,10 @@ class PaVeBaGPOnline(PALAlgorithm):
     :type epsilon: float
     :param delta: Determines the success probability of the PAC-learning framework.
     :type delta: float
-    :param problem: Problem instance to optimize on.
-    :type dataset_name: Problem
+    :param problem: Problem instance to optimize on. It should be a :obj:`FixedPointsProblem`.
+    :type problem: FixedPointsProblem
     :param order: Order to be used.
     :type order: Order
-    :param noise_var: Variance of the Gaussian sampling noise.
-    :type noise_var: float
     :param conf_contraction: Contraction coefficient to shrink the
         confidence regions empirically. Defaults to 32.
     :type conf_contraction: float
@@ -41,9 +32,8 @@ class PaVeBaGPOnline(PALAlgorithm):
     :param batch_size: Number of samples to be taken in each round. Defaults to 1.
     :type batch_size: int
 
-    The algorithm sequentially samples design rewards with an assumed multivariate white Gaussian
-    noise. It uses Gaussian Process regression to model the rewards and confidence regions. It
-    updates model after every observation.
+    The algorithm sequentially samples design rewards. It uses Gaussian Process regression to model
+    the rewards and confidence regions. It retratins the model after every observation.
 
     Reference:
         "Learning the Pareto Set Under Incomplete Preferences: Pure Exploration in Vector Bandits",
@@ -55,11 +45,9 @@ class PaVeBaGPOnline(PALAlgorithm):
         self,
         epsilon: float,
         delta: float,
-        problem: Problem,
+        problem: FixedPointsProblem,
         order: PolyhedralConeOrder,
-        noise_var: float,
         conf_contraction: float = 32,
-        type: Literal["IH", "DE"] = "IH",
         batch_size: int = 1,
     ) -> None:
         super().__init__(epsilon, delta)
@@ -68,28 +56,14 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.batch_size = batch_size
         self.conf_contraction = conf_contraction
 
+        self.d = problem.in_dim
         self.m = problem.out_dim
 
-        if type == "IH":
-            design_confidence_type = "hyperrectangle"
-            model_class = IndependentExactGPyTorchModel
-        elif type == "DE":
-            design_confidence_type = "hyperellipsoid"
-            model_class = CorrelatedExactGPyTorchModel
-
         self.design_space = FixedPointsDesignSpace(
-            dataset.in_data, dataset.out_dim, confidence_type=design_confidence_type
+            problem.in_data, self.m, confidence_type="hyperrectangle"
         )
-        self.problem = ProblemFromDataset(dataset, noise_var)
 
-        self.model = get_gpytorch_model_w_known_hyperparams(
-            model_class,
-            self.problem,
-            noise_var,
-            initial_sample_cnt=1,
-            X=dataset.in_data,
-            Y=dataset.out_data,
-        )
+        self.model = IndependentExactGPyTorchModel(self.d, self.m, noise_rank=0)
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
@@ -132,8 +106,8 @@ class PaVeBaGPOnline(PALAlgorithm):
 
     def pareto_updating(self):
         """
-        Identify the designs that are highly likely to be `epsilon`-optimal
-        using the confidence regions.
+        Identify the designs that are highly likely to be `epsilon`-optimal using
+        the confidence regions.
         """
         A = self.S.union(self.U)
 
@@ -191,6 +165,7 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.sample_count += len(candidate_list)
         self.model.add_sample(candidate_list, observations)
         self.model.update()
+        self.model.train()
 
     def run_one_step(self) -> bool:
         """

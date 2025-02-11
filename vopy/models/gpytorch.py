@@ -182,18 +182,23 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
-    :param noise_var: Noise variance for Gaussian likelihood.
-    :type noise_var: Union[float, ArrayLike]
     :param model_kind: Type of Exact GP model to be used.
     :type model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]]
+    :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
+        Defaults to None. This should only be provided if :obj:`noise_rank` is None.
+    :type noise_var: Optional[Union[float, ArrayLike]]
+    :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
+        provided if :obj:`noise_var` is None.
+    :type noise_rank: Optional[int]
     """
 
     def __init__(
         self,
         input_dim: int,
         output_dim: int,
-        noise_var: Union[float, ArrayLike],
         model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]],
+        noise_var: Optional[Union[float, ArrayLike]] = None,
+        noise_rank: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -206,25 +211,32 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         # Data containers.
         self.clear_data()
 
+        if noise_var is None and noise_rank is None:
+            raise ValueError("Either noise_var or noise_rank must be provided.")
+        if noise_var is not None and noise_rank is not None:
+            raise ValueError("Only one of noise_var or noise_rank can be provided.")
+
         # Set up likelihood
-        self.noise_var = self.to_tensor(noise_var)
-        if self.noise_var.dim() > 1:
-            self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-                num_tasks=self.output_dim,
-                rank=len(self.noise_var),
-                noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
-                has_global_noise=False,
-            ).to(self.device)
-            self.likelihood.task_noise_covar = self.noise_var
+        if noise_rank is not None:
+            self.noise_var = noise_var
+            self.noise_rank = noise_rank
         else:
-            self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-                num_tasks=self.output_dim,
-                rank=0,
-                noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
-                has_task_noise=False,
-            ).to(self.device)
-            self.likelihood.noise = self.noise_var
-        self.likelihood.requires_grad_(False)
+            self.noise_var = self.to_tensor(noise_var)
+            self.noise_rank = len(self.noise_var) if self.noise_var.dim() > 1 else 0
+
+        self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
+            num_tasks=self.output_dim,
+            rank=self.noise_rank,
+            noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
+            has_task_noise=False,
+        ).to(self.device)
+
+        if self.noise_var is not None:
+            if self.noise_rank == 0:
+                self.likelihood.noise = self.noise_var
+            else:
+                self.likelihood.task_noise_covar = self.noise_var
+            self.likelihood.requires_grad_(False)
 
         self.kernel_type = gpytorch.kernels.RBFKernel
         self.model = None
@@ -341,12 +353,22 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
-    :param noise_var: Noise variance for Gaussian likelihood.
-    :type noise_var: Union[float, ArrayLike]
+    :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
+        Defaults to None. This should only be provided if :obj:`noise_rank` is None.
+    :type noise_var: Optional[Union[float, ArrayLike]]
+    :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
+        provided if :obj:`noise_var` is None.
+    :type noise_rank: Optional[int]
     """
 
-    def __init__(self, input_dim: int, output_dim: int, noise_var: Union[float, ArrayLike]) -> None:
-        super().__init__(input_dim, output_dim, noise_var, MultitaskExactGPModel)
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        noise_var: Optional[Union[float, ArrayLike]] = None,
+        noise_rank: Optional[int] = None,
+    ) -> None:
+        super().__init__(input_dim, output_dim, MultitaskExactGPModel, noise_var, noise_rank)
 
     def predict(self, test_X: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -380,12 +402,22 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
-    :param noise_var: Noise variance for Gaussian likelihood.
-    :type noise_var: Union[float, ArrayLike]
+    :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
+        Defaults to None. This should only be provided if :obj:`noise_rank` is None.
+    :type noise_var: Optional[Union[float, ArrayLike]]
+    :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
+        provided if :obj:`noise_var` is None.
+    :type noise_rank: Optional[int]
     """
 
-    def __init__(self, input_dim: int, output_dim: int, noise_var: Union[float, ArrayLike]) -> None:
-        super().__init__(input_dim, output_dim, noise_var, BatchIndependentExactGPModel)
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        noise_var: Optional[Union[float, ArrayLike]],
+        noise_rank: Optional[int] = None,
+    ) -> None:
+        super().__init__(input_dim, output_dim, BatchIndependentExactGPModel, noise_var, noise_rank)
 
     def predict(self, test_X: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -413,8 +445,9 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
 def get_gpytorch_model_w_known_hyperparams(
     model_class: type[Union[CorrelatedExactGPyTorchModel, IndependentExactGPyTorchModel]],
     problem: Problem,
-    noise_var: Union[float, ArrayLike],
     initial_sample_cnt: int,
+    noise_var: Optional[Union[float, ArrayLike]] = None,
+    noise_rank: Optional[int] = None,
     X: Optional[np.ndarray] = None,
     Y: Optional[np.ndarray] = None,
 ) -> GPyTorchMultioutputExactModel:
@@ -427,10 +460,15 @@ def get_gpytorch_model_w_known_hyperparams(
     :type model_class: type
     :param problem: Problem instance defining the optimization problem.
     :type problem: Problem
-    :param noise_var: Noise variance for Gaussian likelihood.
-    :type noise_var: Union[float, ArrayLike]
     :param initial_sample_cnt: Number of initial samples to jump-start the GP.
     :type initial_sample_cnt: int
+    :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
+        Defaults to None. This should only be provided if :obj:`noise_rank` is None.
+    :type noise_var: Optional[Union[float, ArrayLike]]
+    :param noise_rank:
+    :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
+        provided if :obj:`noise_var` is None.
+    :type noise_rank: Optional[int]
     :param X: Input data for training the hyperparameters and taking the initial samples.
     :type X: Optional[np.ndarray]
     :param Y: Target data for training the hyperparameters and taking the initial samples.
@@ -446,7 +484,7 @@ def get_gpytorch_model_w_known_hyperparams(
     in_dim = X.shape[1]
     out_dim = Y.shape[1]
 
-    model = model_class(in_dim, out_dim, noise_var=noise_var)
+    model = model_class(in_dim, out_dim, noise_var=noise_var, noise_rank=noise_rank)
 
     model.add_sample(X, Y)
     model.update()

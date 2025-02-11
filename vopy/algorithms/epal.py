@@ -91,8 +91,8 @@ class EpsilonPAL(PALAlgorithm):
         self.model = get_gpytorch_model_w_known_hyperparams(
             IndependentExactGPyTorchModel,
             self.problem,
-            noise_var,
             initial_sample_cnt=1,
+            noise_var=noise_var,
             X=dataset.in_data,
             Y=dataset.out_data,
         )

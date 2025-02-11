@@ -107,7 +107,7 @@ class VOGP_AD(PALAlgorithm):
         self.problem = problem
 
         self.model = get_gpytorch_model_w_known_hyperparams(
-            CorrelatedExactGPyTorchModel, self.problem, noise_var, initial_sample_cnt=1
+            CorrelatedExactGPyTorchModel, self.problem, initial_sample_cnt=1, noise_var=noise_var
         )
 
         self.u_star, self.d1 = self.compute_u_star()

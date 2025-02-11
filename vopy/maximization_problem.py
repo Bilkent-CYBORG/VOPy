@@ -43,9 +43,21 @@ class Problem(ABC):
 
 
 class FixedPointsProblem(Problem):
-    """ """
+    """
+    Define an evaluatable optimization problem using fixed points and an objective function. Noise
+    is assumed to be intrinsic to the objective function.
 
-    def __init__(self, in_points: ArrayLike, objective: Callable):
+    :param in_points: The fixed input points to evaluate the objective function.
+    :type in_points: ArrayLike
+    :param out_dim: The dimension of the output space of the objective function.
+    :type out_dim: int
+    :param objective: The objective function to evaluate at the fixed input points.
+    :type objective: Callable[[ArrayLike], ArrayLike]
+    """
+
+    def __init__(
+        self, in_points: ArrayLike, out_dim: int, objective: Callable[[ArrayLike], ArrayLike]
+    ) -> None:
         super().__init__()
 
         self.in_data = in_points
@@ -63,11 +75,14 @@ class FixedPointsProblem(Problem):
         if x.ndim <= 1:
             x = x.reshape(1, -1)
 
+        if x.ndim != 2:
+            raise ValueError("Input points must be 2D array.")
+
         n_evals = x.shape[0]
 
         y = np.empty((n_evals, self.out_dim))
         for eval_i in range(n_evals):
-            y[eval_i] = self.objective
+            y[eval_i] = self.objective(x[eval_i])
 
         return y
 
