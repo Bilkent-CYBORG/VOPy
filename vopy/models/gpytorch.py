@@ -13,6 +13,7 @@ from numpy.typing import ArrayLike
 
 from vopy.maximization_problem import Problem
 
+from vopy.utils.transforms import InputTransform, OutputTransform, StandardizeOutput
 from vopy.models.model import GPModel, ModelList
 from vopy.utils.utils import generate_sobol_samples
 
@@ -190,6 +191,11 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
     :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
         provided if :obj:`noise_var` is None.
     :type noise_rank: Optional[int]
+    :param input_transform: An input transform to apply on training and prediction data. Defaults
+        to None. Generally, normalization should be applied.
+    :param output_transform: An output transform to apply on training and predicted data. Defaults
+        to None. Generally, standardization should be applied.
+    :type output_transform: Optional[OutputTransform]
     """
 
     def __init__(
@@ -199,6 +205,8 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]],
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
+        input_transform: Optional[InputTransform] = None,
+        output_transform: Optional[OutputTransform] = None,
     ) -> None:
         super().__init__()
 

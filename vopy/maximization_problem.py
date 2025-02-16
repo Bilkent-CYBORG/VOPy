@@ -21,7 +21,6 @@ class Problem(ABC):
         they should have the following attributes defined:
 
     - :obj:`out_dim`: :type:`int`
-
     """
 
     out_dim: int
