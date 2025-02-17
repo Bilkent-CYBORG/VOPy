@@ -2,13 +2,15 @@ import logging
 
 import numpy as np
 
-from vopy.order import PolyhedralConeOrder
-from vopy.algorithms.algorithm import PALAlgorithm
-from vopy.design_space import FixedPointsDesignSpace
-from vopy.models import IndependentExactGPyTorchModel
-from vopy.maximization_problem import FixedPointsProblem
 from vopy.acquisition import optimize_acqf_discrete, SumVarianceAcquisition
+from vopy.algorithms.algorithm import PALAlgorithm
 from vopy.confidence_region import confidence_region_is_covered, confidence_region_is_dominated
+from vopy.design_space import FixedPointsDesignSpace
+from vopy.maximization_problem import FixedPointsProblem
+from vopy.models import IndependentExactGPyTorchModel
+
+from vopy.order import PolyhedralConeOrder
+from vopy.utils.transforms import NormalizeInput, StandardizeOutput
 
 
 class PaVeBaGPOnline(PALAlgorithm):
@@ -63,7 +65,15 @@ class PaVeBaGPOnline(PALAlgorithm):
             problem.in_data, self.m, confidence_type="hyperrectangle"
         )
 
-        self.model = IndependentExactGPyTorchModel(self.d, self.m, noise_rank=0)
+        input_transform = NormalizeInput(self.d, bounds=problem.bounds)
+        output_transform = StandardizeOutput(self.m)
+        self.model = IndependentExactGPyTorchModel(
+            self.d,
+            self.m,
+            noise_rank=0,
+            input_transform=input_transform,
+            output_transform=output_transform,
+        )
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon

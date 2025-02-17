@@ -12,9 +12,9 @@ from gpytorch.mlls import SumMarginalLogLikelihood
 from numpy.typing import ArrayLike
 
 from vopy.maximization_problem import Problem
-
-from vopy.utils.transforms import InputTransform, OutputTransform, StandardizeOutput
 from vopy.models.model import GPModel, ModelList
+
+from vopy.utils.transforms import InputTransform, OutputTransform
 from vopy.utils.utils import generate_sobol_samples
 
 torch.set_default_dtype(torch.float64)
@@ -193,7 +193,8 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
     :type noise_rank: Optional[int]
     :param input_transform: An input transform to apply on training and prediction data. Defaults
         to None. Generally, normalization should be applied.
-    :param output_transform: An output transform to apply on training and predicted data. Defaults
+    :type input_transform: Optional[InputTransform]
+    :param output_transform: An output transform to apply on training and prediction data. Defaults
         to None. Generally, standardization should be applied.
     :type output_transform: Optional[OutputTransform]
     """
@@ -215,6 +216,9 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.model_kind = model_kind
+
+        self.input_transform = input_transform
+        self.output_transform = output_transform
 
         # Data containers.
         self.clear_data()
@@ -281,6 +285,19 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         """
         Create GP model or update it with the current training data.
         """
+
+        if self.input_transform is not None:
+            inputs = self.input_transform.fit_transform(self.train_inputs.numpy(force=True))
+            inputs = self.to_tensor(inputs)
+        else:
+            inputs = self.train_inputs
+
+        if self.output_transform is not None:
+            targets = self.output_transform.fit_transform(self.train_targets.numpy(force=True))
+            targets = self.to_tensor(targets)
+        else:
+            targets = self.train_targets
+
         if self.model is None:
             self.model = self.model_kind(
                 self.train_inputs, self.train_targets, self.likelihood, self.kernel_type
@@ -367,6 +384,12 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
         provided if :obj:`noise_var` is None.
     :type noise_rank: Optional[int]
+    :param input_transform: An input transform to apply on training and prediction data. Defaults
+        to None. Generally, normalization should be applied.
+    :type input_transform: Optional[InputTransform]
+    :param output_transform: An output transform to apply on training and prediction data. Defaults
+        to None. Generally, standardization should be applied.
+    :type output_transform: Optional[OutputTransform]
     """
 
     def __init__(
@@ -375,8 +398,18 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
         output_dim: int,
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
+        input_transform: Optional[InputTransform] = None,
+        output_transform: Optional[OutputTransform] = None,
     ) -> None:
-        super().__init__(input_dim, output_dim, MultitaskExactGPModel, noise_var, noise_rank)
+        super().__init__(
+            input_dim,
+            output_dim,
+            MultitaskExactGPModel,
+            noise_var,
+            noise_rank,
+            input_transform,
+            output_transform,
+        )
 
     def predict(self, test_X: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -387,8 +420,11 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
         :return: Predicted means and variances corresponding to each test point.
         :rtype: tuple[np.ndarray, np.ndarray]
         """
-        # Last column of X_t are sample space indices.
-        test_X = self.to_tensor(test_X[:, : self.input_dim])
+        # Last column of X_t might be reserved for sample space indices.
+        test_X = test_X[..., : self.input_dim]
+        if self.input_transform is not None:
+            test_X = self.input_transform.transform(test_X[..., : self.input_dim])
+        test_X = self.to_tensor(test_X[..., : self.input_dim])
 
         test_X = test_X[:, None, :]  # Prepare for batch inference
 
@@ -416,6 +452,12 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
         provided if :obj:`noise_var` is None.
     :type noise_rank: Optional[int]
+    :param input_transform: An input transform to apply on training and prediction data. Defaults
+        to None. Generally, normalization should be applied.
+    :type input_transform: Optional[InputTransform]
+    :param output_transform: An output transform to apply on training and prediction data. Defaults
+        to None. Generally, standardization should be applied.
+    :type output_transform: Optional[OutputTransform]
     """
 
     def __init__(
@@ -424,8 +466,18 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
         output_dim: int,
         noise_var: Optional[Union[float, ArrayLike]],
         noise_rank: Optional[int] = None,
+        input_transform: Optional[InputTransform] = None,
+        output_transform: Optional[OutputTransform] = None,
     ) -> None:
-        super().__init__(input_dim, output_dim, BatchIndependentExactGPModel, noise_var, noise_rank)
+        super().__init__(
+            input_dim,
+            output_dim,
+            BatchIndependentExactGPModel,
+            noise_var,
+            noise_rank,
+            input_transform,
+            output_transform,
+        )
 
     def predict(self, test_X: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -436,7 +488,10 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
         :return: Predicted means and variances corresponding to each test point.
         :rtype: tuple[np.ndarray, np.ndarray]
         """
-        # Last column of X_t are sample space indices.
+        # Last column of X_t might be reserved for sample space indices.
+        test_X = test_X[..., : self.input_dim]
+        if self.input_transform is not None:
+            test_X = self.input_transform.transform(test_X[..., : self.input_dim])
         test_X = self.to_tensor(test_X[..., : self.input_dim])
 
         with torch.no_grad(), torch.autograd.set_detect_anomaly(True):

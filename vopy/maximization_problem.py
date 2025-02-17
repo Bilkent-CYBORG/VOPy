@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -21,9 +21,11 @@ class Problem(ABC):
         they should have the following attributes defined:
 
     - :obj:`out_dim`: :type:`int`
+    - :obj:`bounds`: :type:`List[Tuple[float, float]]`
     """
 
     out_dim: int
+    bounds: List[Tuple[float, float]]
 
     def __init__(self) -> None:
         super().__init__()
@@ -59,8 +61,14 @@ class FixedPointsProblem(Problem):
     ) -> None:
         super().__init__()
 
-        self.in_data = in_points
+        self.in_data = np.array(in_points)
         self.objective = objective
+
+        self.out_dim = out_dim
+
+        mins = np.min(self.in_data, axis=0, keepdims=True)
+        maxs = np.max(self.in_data, axis=0, keepdims=True)
+        self.bounds = np.concatenate([mins.reshape(-1, 1), maxs.reshape(-1, 1)], axis=1)
 
     def evaluate(self, x: np.ndarray) -> np.ndarray:
         """
@@ -104,6 +112,8 @@ class ProblemFromDataset(Problem):
 
         self.dataset = dataset
         self.noise_var = noise_var
+
+        self.bounds = [(0, 1)] * self.dataset._in_dim
 
         noise_covar = np.eye(self.dataset.out_dim) * noise_var
         self.noise_cholesky = np.linalg.cholesky(noise_covar)
@@ -284,7 +294,8 @@ class DecoupledEvaluationProblem(Problem):
     """
     Wrapper around a :class:`Problem` instance that allows for decoupled evaluations of
     objective functions. This class enables selective evaluation of specific objectives
-    by indexing into the output of the underlying problem.
+    by indexing into the output of the underlying problem. Therefore, this class is not
+    suitable for real-time evaluations of the underlying problem.
 
     :param problem: An instance of :class:`Problem` to wrap and decouple evaluations.
     :type problem: Problem
