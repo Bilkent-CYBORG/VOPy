@@ -20,12 +20,14 @@ class Problem(ABC):
         Classes derived from :class:`Problem` must implement the :meth:`evaluate` method. Also,
         they should have the following attributes defined:
 
+    - :obj:`in_dim`: :type:`int`
     - :obj:`out_dim`: :type:`int`
     - :obj:`bounds`: :type:`List[Tuple[float, float]]`
     """
 
+    in_dim: int
     out_dim: int
-    bounds: List[Tuple[float, float]]
+    bounds: Union[np.ndarray, List[Tuple[float, float]]]
 
     def __init__(self) -> None:
         super().__init__()
@@ -64,6 +66,7 @@ class FixedPointsProblem(Problem):
         self.in_data = np.array(in_points)
         self.objective = objective
 
+        self.in_dim = self.in_data.shape[1]
         self.out_dim = out_dim
 
         mins = np.min(self.in_data, axis=0, keepdims=True)
@@ -113,7 +116,10 @@ class ProblemFromDataset(Problem):
         self.dataset = dataset
         self.noise_var = noise_var
 
-        self.bounds = [(0, 1)] * self.dataset._in_dim
+        self.in_dim = self.dataset._in_dim
+        self.out_dim = self.dataset._out_dim
+
+        self.bounds = np.array([(0, 1)] * self.dataset._in_dim)
 
         noise_covar = np.eye(self.dataset.out_dim) * noise_var
         self.noise_cholesky = np.linalg.cholesky(noise_covar)
@@ -226,7 +232,7 @@ class BraninCurrin(ContinuousProblem):
             Neural Information Processing Systems (NeurIPS), 2019.
     """
 
-    bounds = [(0.0, 1.0), (0.0, 1.0)]
+    bounds = np.array([(0.0, 1.0), (0.0, 1.0)])
     in_dim = len(bounds)
     out_dim = 2
     domain_discretization_each_dim = 33

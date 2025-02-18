@@ -464,7 +464,7 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
         self,
         input_dim: int,
         output_dim: int,
-        noise_var: Optional[Union[float, ArrayLike]],
+        noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
         output_transform: Optional[OutputTransform] = None,
@@ -511,6 +511,8 @@ def get_gpytorch_model_w_known_hyperparams(
     initial_sample_cnt: int,
     noise_var: Optional[Union[float, ArrayLike]] = None,
     noise_rank: Optional[int] = None,
+    input_transform: Optional[InputTransform] = None,
+    output_transform: Optional[OutputTransform] = None,
     X: Optional[np.ndarray] = None,
     Y: Optional[np.ndarray] = None,
 ) -> GPyTorchMultioutputExactModel:
@@ -532,6 +534,12 @@ def get_gpytorch_model_w_known_hyperparams(
     :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
         provided if :obj:`noise_var` is None.
     :type noise_rank: Optional[int]
+    :param input_transform: An input transform to apply on training and prediction data. Defaults
+        to None. Generally, normalization should be applied.
+    :type input_transform: Optional[InputTransform]
+    :param output_transform: An output transform to apply on training and prediction data. Defaults
+        to None. Generally, standardization should be applied.
+    :type output_transform: Optional[OutputTransform]
     :param X: Input data for training the hyperparameters and taking the initial samples.
     :type X: Optional[np.ndarray]
     :param Y: Target data for training the hyperparameters and taking the initial samples.
@@ -541,13 +549,22 @@ def get_gpytorch_model_w_known_hyperparams(
     """
     if X is None:
         X = generate_sobol_samples(problem.in_dim, 512)  # TODO: magic number
+        # Move X into problem bounds
+        X = problem.bounds[..., 0] + (problem.bounds[..., 1] - problem.bounds[..., 0]) * X
     if Y is None:
         Y = problem.evaluate(X)
 
     in_dim = X.shape[1]
     out_dim = Y.shape[1]
 
-    model = model_class(in_dim, out_dim, noise_var=noise_var, noise_rank=noise_rank)
+    model = model_class(
+        in_dim,
+        out_dim,
+        noise_var=noise_var,
+        noise_rank=noise_rank,
+        input_transform=input_transform,
+        output_transform=output_transform,
+    )
 
     model.add_sample(X, Y)
     model.update()

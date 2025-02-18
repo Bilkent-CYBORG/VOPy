@@ -51,6 +51,7 @@ class PaVeBaGPOnline(PALAlgorithm):
         order: PolyhedralConeOrder,
         conf_contraction: float = 32,
         batch_size: int = 1,
+        initial_sample_cnt: int = 10,
     ) -> None:
         super().__init__(epsilon, delta)
 
@@ -58,14 +59,16 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.batch_size = batch_size
         self.conf_contraction = conf_contraction
 
-        self.d = problem.in_dim
-        self.m = problem.out_dim
+        self.problem = problem
+
+        self.d = self.problem.in_dim
+        self.m = self.problem.out_dim
 
         self.design_space = FixedPointsDesignSpace(
-            problem.in_data, self.m, confidence_type="hyperrectangle"
+            self.problem.in_data, self.m, confidence_type="hyperrectangle"
         )
 
-        input_transform = NormalizeInput(self.d, bounds=problem.bounds)
+        input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
         output_transform = StandardizeOutput(self.m)
         self.model = IndependentExactGPyTorchModel(
             self.d,
@@ -75,6 +78,8 @@ class PaVeBaGPOnline(PALAlgorithm):
             output_transform=output_transform,
         )
 
+        self.initial_sampling(initial_sample_cnt=initial_sample_cnt)
+
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
 
@@ -83,6 +88,20 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.U = set()
         self.round = 0
         self.sample_count = 0
+
+    def initial_sampling(self, initial_sample_cnt: int = 5):
+        """
+        Initial sampling from the design space to start the algorithm.
+
+        :param initial_sample_cnt: Number of initial samples to be taken.
+        :type initial_sample_cnt: int
+        """
+        initial_indices = np.random.choice(len(self.problem.in_data), initial_sample_cnt)
+        initial_points = self.problem.in_data[initial_indices]
+        initial_values = self.problem.evaluate(initial_points)
+
+        self.model.add_sample(initial_points, initial_values)
+        self.model.update()
 
     def modeling(self):
         """
