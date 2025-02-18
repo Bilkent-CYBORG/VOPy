@@ -1,17 +1,23 @@
+import logging
+
 from itertools import product
+
+import numpy as np
+
+# import optuna
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from fvcore.nn import FlopCountAnalysis
-import numpy as np
-
-import optuna
 
 from vopy.algorithms import PaVeBaGPOnline
 from vopy.maximization_problem import FixedPointsProblem
 from vopy.order import ConeTheta2DOrder
+
+
+logging.basicConfig(level=logging.INFO)
 
 
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -87,7 +93,7 @@ def max_objective(lr, n_layers, n_units):
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
 
-    for epoch in range(25):
+    for epoch in range(3):
         train_model(model, optimizer, train_loader)
     flops, accuracy = eval_model(model, val_loader)
     return -flops, accuracy
@@ -109,7 +115,7 @@ delta = 0.05
 order = ConeTheta2DOrder(90)
 conf_contraction = 16
 paveba = PaVeBaGPOnline(
-    epsilon, delta, vopy_problem, order, conf_contraction=conf_contraction, initial_sample_cnt=10
+    epsilon, delta, vopy_problem, order, conf_contraction=conf_contraction, initial_sample_cnt=3
 )
 
 # Run PaVeBa Online

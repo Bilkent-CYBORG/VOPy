@@ -22,8 +22,8 @@ class TestProblemFromDataset(TestCase):
 
         dataset = mock.Mock(spec=Dataset)
 
-        dataset.in_dim = 2
-        dataset.out_dim = 1
+        dataset._in_dim = 2
+        dataset._out_dim = 1
         dataset.in_data = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
         dataset.out_data = np.array([[0], [1], [2], [3]])
 
@@ -48,8 +48,8 @@ class TestDecoupledEvaluationProblem(TestCase):
 
         dataset = mock.Mock(spec=Dataset)
 
-        dataset.in_dim = 2
-        dataset.out_dim = 2
+        dataset._in_dim = 2
+        dataset._out_dim = 2
         dataset.in_data = x
         dataset.out_data = y
 

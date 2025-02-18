@@ -491,8 +491,8 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
         # Last column of X_t might be reserved for sample space indices.
         test_X = test_X[..., : self.input_dim]
         if self.input_transform is not None:
-            test_X = self.input_transform.transform(test_X[..., : self.input_dim])
-        test_X = self.to_tensor(test_X[..., : self.input_dim])
+            test_X = self.input_transform.transform(test_X)
+        test_X = self.to_tensor(test_X)
 
         with torch.no_grad(), torch.autograd.set_detect_anomaly(True):
             res = self.model(test_X)
