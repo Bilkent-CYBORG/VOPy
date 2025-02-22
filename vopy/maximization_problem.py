@@ -61,8 +61,6 @@ class FixedPointsProblem(Problem):
     def __init__(
         self, in_points: ArrayLike, out_dim: int, objective: Callable[[ArrayLike], ArrayLike]
     ) -> None:
-        super().__init__()
-
         self.in_data = np.array(in_points)
         self.objective = objective
 
@@ -72,6 +70,8 @@ class FixedPointsProblem(Problem):
         mins = np.min(self.in_data, axis=0, keepdims=True)
         maxs = np.max(self.in_data, axis=0, keepdims=True)
         self.bounds = np.concatenate([mins.reshape(-1, 1), maxs.reshape(-1, 1)], axis=1)
+
+        super().__init__()
 
     def evaluate(self, x: np.ndarray) -> np.ndarray:
         """
@@ -111,17 +111,16 @@ class ProblemFromDataset(Problem):
     """
 
     def __init__(self, dataset: Dataset, noise_var: float) -> None:
+        self.in_dim = dataset._in_dim
+        self.out_dim = dataset._out_dim
+        self.bounds = np.array([(0, 1)] * dataset._in_dim)
+
         super().__init__()
 
         self.dataset = dataset
         self.noise_var = noise_var
 
-        self.in_dim = self.dataset._in_dim
-        self.out_dim = self.dataset._out_dim
-
-        self.bounds = np.array([(0, 1)] * self.dataset._in_dim)
-
-        noise_covar = np.eye(self.dataset.out_dim) * noise_var
+        noise_covar = np.eye(self.out_dim) * noise_var
         self.noise_cholesky = np.linalg.cholesky(noise_covar)
 
     def evaluate(self, x: np.ndarray, noisy: bool = True) -> np.ndarray:

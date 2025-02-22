@@ -1,3 +1,4 @@
+import logging
 import warnings
 
 import vopy.algorithms
@@ -6,7 +7,7 @@ from vopy.order import ConeTheta2DOrder
 from vopy.utils import set_seed
 from vopy.utils.evaluate import calculate_epsilonF1_score
 
-
+logging.basicConfig(level=logging.INFO)
 warnings.filterwarnings("ignore")
 
 
@@ -21,30 +22,28 @@ epsilon = 0.01
 delta = 0.05
 noise_var = epsilon
 
-alg_names = ["NaiveElimination", "PaVeBa"]
-alg_params = {"NaiveElimination": {"L": 5}, "PaVeBa": {"conf_contraction": 8}}
+set_seed(0)
 
-for alg_name in alg_names:
-    set_seed(0)
+algorithm = vopy.algorithms.PaVeBaGP(
+    epsilon=epsilon,
+    delta=delta,
+    dataset_name=dataset_name,
+    order=order,
+    noise_var=noise_var,
+    conf_contraction=32,
+    type="IH",
+    batch_size=1,
+)
 
-    algorithm = getattr(vopy.algorithms, alg_name)(
-        epsilon=epsilon,
-        delta=delta,
-        dataset_name=dataset_name,
-        order=order,
-        noise_var=noise_var,
-        **alg_params[alg_name],
-    )
+while True:
+    is_done = algorithm.run_one_step()
 
-    while True:
-        is_done = algorithm.run_one_step()
+    if is_done:
+        break
 
-        if is_done:
-            break
+pred_pareto_indices = sorted(list(algorithm.P))
+pareto_indices = order.get_pareto_set(dataset.out_data)
 
-    pred_pareto_indices = sorted(list(algorithm.P))
-    pareto_indices = order.get_pareto_set(dataset.out_data)
-
-    eps_f1 = calculate_epsilonF1_score(dataset, order, pareto_indices, pred_pareto_indices, epsilon)
-    print(f"{alg_name} - epsilon-F1 Score: {eps_f1:.2f}")
-    print(f"{alg_name} - Number of observations: {algorithm.sample_count}")
+eps_f1 = calculate_epsilonF1_score(dataset, order, pareto_indices, pred_pareto_indices, epsilon)
+print(f"epsilon-F1 Score: {eps_f1:.2f}")
+print(f"Number of observations: {algorithm.sample_count}")

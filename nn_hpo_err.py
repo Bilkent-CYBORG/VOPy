@@ -4,7 +4,7 @@ from itertools import product
 
 import numpy as np
 
-# import optuna
+import optuna
 
 import torch
 import torch.nn as nn
@@ -12,14 +12,15 @@ import torch.nn.functional as F
 import torchvision
 from fvcore.nn import FlopCountAnalysis
 
+import botorch
+
 from vopy.algorithms import PaVeBaGPOnline
 from vopy.maximization_problem import FixedPointsProblem
 from vopy.order import ConeTheta2DOrder
 
 
 logging.basicConfig(level=logging.INFO)
-
-
+botorch.settings.debug._set_state(True)
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 DIR = ".."
 BATCHSIZE = 128
@@ -93,7 +94,7 @@ def max_objective(lr, n_layers, n_units):
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
 
-    for epoch in range(3):
+    for epoch in range(25):
         train_model(model, optimizer, train_loader)
     flops, accuracy = eval_model(model, val_loader)
     return -flops, accuracy
@@ -103,26 +104,46 @@ def vopy_objective(x):
     return np.array(max_objective(x[0], x[1], x[2]))
 
 
-lr_range = range(1, 6)
-n_layers_range = range(1, 4)
-n_units_range = range(16, 25)
-in_pts = list(product(lr_range, n_layers_range, n_units_range))
+def optuna_objective(trial):
+    n_layers = trial.suggest_int("n_layers", n_layers_range[0], n_layers_range[-1])
+    n_units = trial.suggest_int("n_units", n_units_range[0], n_units_range[-1])
+    lr = trial.suggest_int("lr", lr_range[0], lr_range[-1])
+    lr = 10 ** (-lr)
 
-vopy_problem = FixedPointsProblem(in_points=in_pts, out_dim=2, objective=vopy_objective)
+    return max_objective(lr, n_layers, n_units)
 
-epsilon = 0.01
-delta = 0.05
-order = ConeTheta2DOrder(90)
-conf_contraction = 16
-paveba = PaVeBaGPOnline(
-    epsilon, delta, vopy_problem, order, conf_contraction=conf_contraction, initial_sample_cnt=3
-)
 
-# Run PaVeBa Online
-while True:
-    is_done = paveba.run_one_step()
+if __name__ == "__main__":
+    lr_range = list(range(1, 6))
+    n_layers_range = list(range(1, 4))
+    n_units_range = list(range(16, 32))
 
-    if is_done:
-        break
+    # Optuna
+    study = optuna.create_study(directions=["maximize", "maximize"])
+    # study.optimize(optuna_objective, n_trials=10, timeout=120)
+    # print("Number of finished trials: ", len(study.trials))
 
-pred_pareto_indices = sorted(list(paveba.P))
+    # PaVeBa Online
+    in_pts = list(product(lr_range, n_layers_range, n_units_range))
+    vopy_problem = FixedPointsProblem(in_points=in_pts, out_dim=2, objective=vopy_objective)
+
+    epsilon = 0.01
+    delta = 0.05
+    order = ConeTheta2DOrder(90)
+    conf_contraction = 1
+    paveba = PaVeBaGPOnline(
+        epsilon,
+        delta,
+        vopy_problem,
+        order,
+        conf_contraction=conf_contraction,
+        initial_sample_cnt=10,
+    )
+
+    while True:
+        is_done = paveba.run_one_step()
+
+        if is_done:
+            break
+
+    pred_pareto_indices = sorted(list(paveba.P))

@@ -102,6 +102,7 @@ class PaVeBaGPOnline(PALAlgorithm):
 
         self.model.add_sample(initial_points, initial_values)
         self.model.update()
+        self.model.train()
 
     def modeling(self):
         """

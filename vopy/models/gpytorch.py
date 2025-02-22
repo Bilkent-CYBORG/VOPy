@@ -249,6 +249,8 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
             else:
                 self.likelihood.task_noise_covar = self.noise_var
             self.likelihood.requires_grad_(False)
+        else:
+            self.likelihood.requires_grad_(True)
 
         self.kernel_type = gpytorch.kernels.RBFKernel
         self.model = None
@@ -299,11 +301,10 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
             targets = self.train_targets
 
         if self.model is None:
-            self.model = self.model_kind(
-                self.train_inputs, self.train_targets, self.likelihood, self.kernel_type
-            ).to(self.device)
+            self.model = self.model_kind(inputs, targets, self.likelihood, self.kernel_type)
+            self.model = self.model.to(self.device)
         else:
-            self.model.set_train_data(self.train_inputs, self.train_targets, strict=False)
+            self.model.set_train_data(inputs, targets, strict=False)
 
         self.model.eval()
         self.likelihood.eval()
