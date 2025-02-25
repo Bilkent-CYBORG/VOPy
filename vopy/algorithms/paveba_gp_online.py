@@ -1,5 +1,6 @@
 import logging
 
+import gpytorch
 import numpy as np
 
 from vopy.acquisition import optimize_acqf_discrete, SumVarianceAcquisition
@@ -68,11 +69,15 @@ class PaVeBaGPOnline(PALAlgorithm):
             self.problem.in_data, self.m, confidence_type="hyperrectangle"
         )
 
+        kernel_type = gpytorch.kernels.MaternKernel
+        kernel_prior = gpytorch.priors.GammaPrior(3.0, 6.0)
         input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
         output_transform = StandardizeOutput(self.m)
         self.model = IndependentExactGPyTorchModel(
             self.d,
             self.m,
+            kernel_type=kernel_type,
+            kernel_prior=kernel_prior,
             noise_rank=0,
             input_transform=input_transform,
             output_transform=output_transform,

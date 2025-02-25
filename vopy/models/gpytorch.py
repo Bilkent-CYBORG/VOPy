@@ -80,6 +80,9 @@ class MultitaskExactGPModel(gpytorch.models.ExactGP):
     :type likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood
     :param kernel: Kernel type for covariance computation.
     :type kernel: type[gpytorch.kernels.Kernel]
+    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
+        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
+    :type kernel_prior: Optional[gpytorch.priors.Prior]
     """
 
     def __init__(
@@ -88,6 +91,7 @@ class MultitaskExactGPModel(gpytorch.models.ExactGP):
         train_targets: torch.Tensor,
         likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood,
         kernel: type[gpytorch.kernels.Kernel],
+        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
     ):
         super().__init__(train_inputs, train_targets, likelihood)
 
@@ -98,10 +102,9 @@ class MultitaskExactGPModel(gpytorch.models.ExactGP):
             gpytorch.means.ZeroMean(), num_tasks=output_dim
         )
 
-        # self.base_covar_module = gpytorch.kernels.ScaleKernel(kernel(ard_num_dims=input_dim))
         self.base_covar_module = kernel(
-            ard_num_dims=input_dim, lengthscale_prior=gpytorch.priors.GammaPrior(3.0, 6.0)
-        )  # Scale kernel is unnecessary
+            ard_num_dims=input_dim, lengthscale_prior=kernel_prior
+        )  # Scale kernel is unnecessary because of the multitask kernel.
         self.covar_module = gpytorch.kernels.MultitaskKernel(
             self.base_covar_module, num_tasks=output_dim, rank=output_dim
         )
@@ -135,6 +138,9 @@ class BatchIndependentExactGPModel(gpytorch.models.ExactGP):
     :type likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood
     :param kernel: Kernel type for covariance computation.
     :type kernel: type[gpytorch.kernels.Kernel]
+    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
+        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
+    :type kernel_prior: Optional[gpytorch.priors.Prior]
     """
 
     def __init__(
@@ -143,6 +149,7 @@ class BatchIndependentExactGPModel(gpytorch.models.ExactGP):
         train_targets: torch.Tensor,
         likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood,
         kernel: type[gpytorch.kernels.Kernel],
+        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
     ):
         super().__init__(train_inputs, train_targets, likelihood)
 
@@ -152,7 +159,11 @@ class BatchIndependentExactGPModel(gpytorch.models.ExactGP):
         self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([output_dim]))
 
         self.covar_module = gpytorch.kernels.ScaleKernel(
-            kernel(batch_shape=torch.Size([output_dim]), ard_num_dims=input_dim),
+            kernel(
+                batch_shape=torch.Size([output_dim]),
+                ard_num_dims=input_dim,
+                lengthscale_prior=kernel_prior,
+            ),
             batch_shape=torch.Size([output_dim]),
         )
 
@@ -185,6 +196,12 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
     :type output_dim: int
     :param model_kind: Type of Exact GP model to be used.
     :type model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]]
+    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
+        `gpytorch.kernels.RBFKernel`.
+    :type kernel_type: type[gpytorch.kernels.Kernel]
+    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
+        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
+    :type kernel_prior: gpytorch.priors.Prior
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
@@ -204,6 +221,8 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         input_dim: int,
         output_dim: int,
         model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]],
+        kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
+        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
@@ -252,7 +271,8 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         else:
             self.likelihood.requires_grad_(True)
 
-        self.kernel_type = gpytorch.kernels.RBFKernel
+        self.kernel_type = kernel_type
+        self.kernel_prior = kernel_prior
         self.model = None
 
     def add_sample(self, X_t: ArrayLike, Y_t: ArrayLike):
@@ -301,7 +321,9 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
             targets = self.train_targets
 
         if self.model is None:
-            self.model = self.model_kind(inputs, targets, self.likelihood, self.kernel_type)
+            self.model = self.model_kind(
+                inputs, targets, self.likelihood, self.kernel_type, self.kernel_prior
+            )
             self.model = self.model.to(self.device)
         else:
             self.model.set_train_data(inputs, targets, strict=False)
@@ -379,6 +401,11 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
+    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
+        `gpytorch.kernels.RBFKernel`.
+    :type kernel_type: type[gpytorch.kernels.Kernel]
+    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
+        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
@@ -397,6 +424,8 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
         self,
         input_dim: int,
         output_dim: int,
+        kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
+        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
@@ -406,6 +435,8 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
             input_dim,
             output_dim,
             MultitaskExactGPModel,
+            kernel_type,
+            kernel_prior,
             noise_var,
             noise_rank,
             input_transform,
@@ -447,6 +478,11 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
+    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
+        `gpytorch.kernels.RBFKernel`.
+    :type kernel_type: type[gpytorch.kernels.Kernel]
+    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
+        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
@@ -465,6 +501,8 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
         self,
         input_dim: int,
         output_dim: int,
+        kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
+        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
@@ -473,6 +511,8 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
         super().__init__(
             input_dim,
             output_dim,
+            kernel_type,
+            kernel_prior,
             BatchIndependentExactGPModel,
             noise_var,
             noise_rank,
@@ -510,6 +550,8 @@ def get_gpytorch_model_w_known_hyperparams(
     model_class: type[Union[CorrelatedExactGPyTorchModel, IndependentExactGPyTorchModel]],
     problem: Problem,
     initial_sample_cnt: int,
+    kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
+    kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
     noise_var: Optional[Union[float, ArrayLike]] = None,
     noise_rank: Optional[int] = None,
     input_transform: Optional[InputTransform] = None,
@@ -528,6 +570,11 @@ def get_gpytorch_model_w_known_hyperparams(
     :type problem: Problem
     :param initial_sample_cnt: Number of initial samples to jump-start the GP.
     :type initial_sample_cnt: int
+    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
+        `gpytorch.kernels.RBFKernel`.
+    :type kernel_type: type[gpytorch.kernels.Kernel]
+    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
+        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
@@ -561,6 +608,8 @@ def get_gpytorch_model_w_known_hyperparams(
     model = model_class(
         in_dim,
         out_dim,
+        kernel_type,
+        kernel_prior,
         noise_var=noise_var,
         noise_rank=noise_rank,
         input_transform=input_transform,
