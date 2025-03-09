@@ -2,10 +2,25 @@ from os import PathLike
 from typing import Callable, Optional, Union
 
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 
 from vopy.utils import get_2d_w
+
+
+class FigureCreator:
+    """
+    Context manager to create a Matplotlib figure without displaying it.
+    """
+
+    def __enter__(self):
+        self.prev_backend = matplotlib.get_backend()
+        matplotlib.use("Agg")  # Turn off interactive mode
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        matplotlib.use(self.prev_backend)  # Restore previous backend
 
 
 def plot_2d_theta_cone(
@@ -24,69 +39,73 @@ def plot_2d_theta_cone(
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
-    xlim = [-5, 5]
-    ylim = [-5, 5]
+    with FigureCreator():
+        xlim = [-5, 5]
+        ylim = [-5, 5]
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
+        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
 
-    ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[])
-    ax.spines["bottom"].set_position("zero")
-    ax.spines["left"].set_position("zero")
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+        ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[])
+        ax.spines["bottom"].set_position("zero")
+        ax.spines["left"].set_position("zero")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
-    W = get_2d_w(cone_degree)
+        W = get_2d_w(cone_degree)
 
-    m1 = W[0][0] / -W[0][1] if cone_degree != 90 else 0
-    m2 = W[1][0] / -W[1][1]
+        m1 = W[0][0] / -W[0][1] if cone_degree != 90 else 0
+        m2 = W[1][0] / -W[1][1]
 
-    # For the x basis
-    x_right = np.array([0, xlim[-1]])
-    y_right = 0 + m1 * (x_right - 0)
+        # For the x basis
+        x_right = np.array([0, xlim[-1]])
+        y_right = 0 + m1 * (x_right - 0)
 
-    # For the y basis
-    if cone_degree > 90:
-        x_left = np.array([xlim[0], 0])
-    else:
-        x_left = np.array([0, xlim[-1]])
-    y_left = 0 + m2 * (x_left - 0)
+        # For the y basis
+        if cone_degree > 90:
+            x_left = np.array([xlim[0], 0])
+        else:
+            x_left = np.array([0, xlim[-1]])
+        y_left = 0 + m2 * (x_left - 0)
 
-    if cone_degree > 90:
-        verts = np.array(
-            [
-                [0, 0],
-                [x_left[0], y_left[0]],
-                [xlim[1], ylim[1]],
-                [x_right[-1], y_right[-1]],
-            ]
-        )
-    elif cone_degree == 90:
-        verts = np.array(
-            [
-                [0, 0],
-                [0, ylim[1]],
-                [xlim[1], ylim[1]],
-                [xlim[1], 0],
-            ]
-        )
-    else:
-        verts = np.array(
-            [
-                [0, 0],
-                [x_left[-1], y_left[-1]],
-                [xlim[1], ylim[1]],
-                [x_right[-1], y_right[-1]],
-            ]
-        )
+        if cone_degree > 90:
+            verts = np.array(
+                [
+                    [0, 0],
+                    [x_left[0], y_left[0]],
+                    [xlim[1], ylim[1]],
+                    [x_right[-1], y_right[-1]],
+                ]
+            )
+        elif cone_degree == 90:
+            verts = np.array(
+                [
+                    [0, 0],
+                    [0, ylim[1]],
+                    [xlim[1], ylim[1]],
+                    [xlim[1], 0],
+                ]
+            )
+        else:
+            verts = np.array(
+                [
+                    [0, 0],
+                    [x_left[-1], y_left[-1]],
+                    [xlim[1], ylim[1]],
+                    [x_right[-1], y_right[-1]],
+                ]
+            )
 
-    ax.add_patch(Polygon(verts, color="blue", alpha=0.5))
+        ax.add_patch(Polygon(verts, color="blue", alpha=0.5))
 
-    if path is not None:
-        fig.savefig(path)
+        if path is not None:
+            fig.savefig(path)
 
-    return fig
+        result_fig = fig
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_2d_cone(
@@ -111,36 +130,40 @@ def plot_2d_cone(
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
-    xlim = [-5, 5]
-    ylim = [-5, 5]
+    with FigureCreator():
+        xlim = [-5, 5]
+        ylim = [-5, 5]
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
+        fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
 
-    ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[])
-    ax.spines["bottom"].set_position("zero")
-    ax.spines["left"].set_position("zero")
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+        ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[])
+        ax.spines["bottom"].set_position("zero")
+        ax.spines["left"].set_position("zero")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
-    ax.plot([xlim[0], xlim[1]], [0, 0], [0, 0], color="black")
-    ax.plot([0, 0], [ylim[0], ylim[1]], [0, 0], color="black")
+        ax.plot([xlim[0], xlim[1]], [0, 0], color="black")
+        ax.plot([0, 0], [ylim[0], ylim[1]], color="black")
 
-    x_pts = np.linspace(xlim[0], xlim[1], density)
-    y_pts = np.linspace(ylim[0], ylim[1], density)
+        x_pts = np.linspace(xlim[0], xlim[1], density)
+        y_pts = np.linspace(ylim[0], ylim[1], density)
 
-    X, Y = np.meshgrid(x_pts, y_pts)
-    pts = np.vstack([X.ravel(), Y.ravel()]).T
-    pts = pts[cone_membership(pts)]
-    X, Y = pts[:, 0], pts[:, 1]
+        X, Y = np.meshgrid(x_pts, y_pts)
+        pts = np.vstack([X.ravel(), Y.ravel()]).T
+        pts = pts[cone_membership(pts)]
+        X, Y = pts[:, 0], pts[:, 1]
 
-    ax.scatter(X, Y, alpha=0.3, c="blue", s=8)
+        ax.scatter(X, Y, alpha=0.3, c="blue", s=8)
 
-    if path is not None:
-        fig.savefig(path)
+        if path is not None:
+            fig.savefig(path)
 
-    return fig
+        result_fig = fig
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_3d_cone(
@@ -165,43 +188,46 @@ def plot_3d_cone(
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
+    with FigureCreator():
+        xlim = [-5, 5]
+        ylim = [-5, 5]
+        zlim = [-5, 5]
 
-    xlim = [-5, 5]
-    ylim = [-5, 5]
-    zlim = [-5, 5]
+        fig = plt.figure(figsize=(6, 4))
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        ax.set_zlim(zlim)
 
-    fig = plt.figure(figsize=(6, 4))
-    ax = fig.add_subplot(111, projection="3d")
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
-    ax.set_zlim(zlim)
+        ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[], zticks=[], zticklabels=[])
+        ax.spines["bottom"].set_position("zero")
+        ax.spines["left"].set_position("zero")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
-    ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[], zticks=[], zticklabels=[])
-    ax.spines["bottom"].set_position("zero")
-    ax.spines["left"].set_position("zero")
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+        # Add X, Y, and Z axis lines at the middle of the region
+        ax.plot([xlim[0], xlim[1]], [0, 0], [0, 0], color="black")
+        ax.plot([0, 0], [ylim[0], ylim[1]], [0, 0], color="black")
+        ax.plot([0, 0], [0, 0], [zlim[0], zlim[1]], color="black")
 
-    # Add X, Y, and Z axis lines at the middle of the region
-    ax.plot([xlim[0], xlim[1]], [0, 0], [0, 0], color="black")
-    ax.plot([0, 0], [ylim[0], ylim[1]], [0, 0], color="black")
-    ax.plot([0, 0], [0, 0], [zlim[0], zlim[1]], color="black")
+        x_pts = np.linspace(xlim[0], xlim[1], density)
+        y_pts = np.linspace(ylim[0], ylim[1], density)
+        z_pts = np.linspace(zlim[0], zlim[1], density)
 
-    x_pts = np.linspace(xlim[0], xlim[1], density)
-    y_pts = np.linspace(ylim[0], ylim[1], density)
-    z_pts = np.linspace(zlim[0], zlim[1], density)
+        X, Y, Z = np.meshgrid(x_pts, y_pts, z_pts)
+        pts = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+        pts = pts[cone_membership(pts)]
+        X, Y, Z = pts[:, 0], pts[:, 1], pts[:, 2]
 
-    X, Y, Z = np.meshgrid(x_pts, y_pts, z_pts)
-    pts = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
-    pts = pts[cone_membership(pts)]
-    X, Y, Z = pts[:, 0], pts[:, 1], pts[:, 2]
+        ax.scatter(X, Y, Z, alpha=0.3, c="blue", s=8)
 
-    ax.scatter(X, Y, Z, alpha=0.3, c="blue", s=8)
+        if path is not None:
+            fig.savefig(path)
 
-    if path is not None:
-        fig.savefig(path)
+        result_fig = fig
+        plt.close(fig)
 
-    return fig
+    return result_fig
 
 
 def plot_pareto_front(
@@ -226,79 +252,83 @@ def plot_pareto_front(
     :raises AssertionError: If the elements array is not 2-dimensional.
     :raises AssertionError: If the dimension of the elements is not 2 or 3.
     """
-    dim = elements.shape[1]
+    with FigureCreator():
+        dim = elements.shape[1]
 
-    if elements.ndim != 2:
-        raise AssertionError("Elements array should be N-by-dim.")
-    if dim not in [2, 3]:
-        raise AssertionError("Only 2D and 3D plots are supported.")
+        if elements.ndim != 2:
+            raise AssertionError("Elements array should be N-by-dim.")
+        if dim not in [2, 3]:
+            raise AssertionError("Only 2D and 3D plots are supported.")
 
-    fig = plt.figure(figsize=(6, 4))
+        fig = plt.figure(figsize=(6, 4))
 
-    mask = np.ones(len(elements), dtype=np.uint8)
-    mask[pareto_indices] = 0
-    non_pareto_indices = np.nonzero(mask)
-    if dim == 2:
-        ax = fig.add_subplot(111)
+        mask = np.ones(len(elements), dtype=np.uint8)
+        mask[pareto_indices] = 0
+        non_pareto_indices = np.nonzero(mask)
+        if dim == 2:
+            ax = fig.add_subplot(111)
 
-        ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[])
-        ax.spines["bottom"].set_position("center")
-        ax.spines["left"].set_position("center")
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
+            ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[])
+            ax.spines["bottom"].set_position("center")
+            ax.spines["left"].set_position("center")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
 
-        ax.scatter(
-            elements[pareto_indices][:, 0],
-            elements[pareto_indices][:, 1],
-            c="mediumslateblue",
-            label="Pareto",
-            alpha=0.7,
-        )
-        ax.scatter(
-            elements[non_pareto_indices][:, 0],
-            elements[non_pareto_indices][:, 1],
-            c="tab:blue",
-            label="Non Pareto",
-            alpha=0.5,
-        )
-    else:
-        ax = fig.add_subplot(111, projection="3d")
+            ax.scatter(
+                elements[pareto_indices][:, 0],
+                elements[pareto_indices][:, 1],
+                c="mediumslateblue",
+                label="Pareto",
+                alpha=0.7,
+            )
+            ax.scatter(
+                elements[non_pareto_indices][:, 0],
+                elements[non_pareto_indices][:, 1],
+                c="tab:blue",
+                label="Non Pareto",
+                alpha=0.5,
+            )
+        else:
+            ax = fig.add_subplot(111, projection="3d")
 
-        ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[], zticks=[], zticklabels=[])
-        ax.spines["bottom"].set_position("center")
-        ax.spines["left"].set_position("center")
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
+            ax.set(xticks=[], xticklabels=[], yticks=[], yticklabels=[], zticks=[], zticklabels=[])
+            ax.spines["bottom"].set_position("center")
+            ax.spines["left"].set_position("center")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
 
-        ax.scatter(
-            elements[pareto_indices][:, 0],
-            elements[pareto_indices][:, 1],
-            elements[pareto_indices][:, 2],
-            c="mediumslateblue",
-            label="Pareto",
-            alpha=0.6,
-        )
-        ax.scatter(
-            elements[non_pareto_indices][:, 0],
-            elements[non_pareto_indices][:, 1],
-            elements[non_pareto_indices][:, 2],
-            c="tab:blue",
-            label="Non Pareto",
-            alpha=0.6,
-        )
+            ax.scatter(
+                elements[pareto_indices][:, 0],
+                elements[pareto_indices][:, 1],
+                elements[pareto_indices][:, 2],
+                c="mediumslateblue",
+                label="Pareto",
+                alpha=0.6,
+            )
+            ax.scatter(
+                elements[non_pareto_indices][:, 0],
+                elements[non_pareto_indices][:, 1],
+                elements[non_pareto_indices][:, 2],
+                c="tab:blue",
+                label="Non Pareto",
+                alpha=0.6,
+            )
 
-        # Add X, Y, and Z axis lines at the middle of the region
-        ax.plot([ax.get_xlim()[0], ax.get_xlim()[1]], [0, 0], [0, 0], color="black")
-        ax.plot([0, 0], [ax.get_ylim()[0], ax.get_ylim()[1]], [0, 0], color="black")
-        ax.plot([0, 0], [0, 0], [ax.get_xlim()[0], ax.get_zlim()[1]], color="black")
+            # Add X, Y, and Z axis lines at the middle of the region
+            ax.plot([ax.get_xlim()[0], ax.get_xlim()[1]], [0, 0], [0, 0], color="black")
+            ax.plot([0, 0], [ax.get_ylim()[0], ax.get_ylim()[1]], [0, 0], color="black")
+            ax.plot([0, 0], [0, 0], [ax.get_xlim()[0], ax.get_zlim()[1]], color="black")
 
-    ax.legend(loc="lower left")
-    fig.tight_layout()
+        ax.legend(loc="lower left")
+        fig.tight_layout()
 
-    if path is not None:
-        fig.savefig(path)
+        if path is not None:
+            fig.savefig(path)
 
-    return fig
+        result_fig = fig
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_cells_with_centers(
@@ -317,30 +347,35 @@ def plot_cells_with_centers(
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
+    with FigureCreator():
+        dim = centers.shape[1]
+        if dim != 2:
+            raise NotImplementedError("Visualization of cells is only implemented for 2D data.")
 
-    dim = centers.shape[1]
-    if dim != 2:
-        raise NotImplementedError("Visualization of cells is only implemented for 2D data.")
+        fig, ax = plt.subplots()
+        for point, cell in zip(centers, cells):
+            rect = plt.Rectangle(
+                (cell[0][0], cell[1][0]),
+                cell[0][1] - cell[0][0],
+                cell[1][1] - cell[1][0],
+                edgecolor="black",
+                facecolor="none",
+            )
+            ax.add_patch(rect)
+            ax.plot(
+                point[0], point[1], c="tab:red", marker="o", markersize=2
+            )  # Plot the center point
 
-    fig, ax = plt.subplots()
-    for point, cell in zip(centers, cells):
-        rect = plt.Rectangle(
-            (cell[0][0], cell[1][0]),
-            cell[0][1] - cell[0][0],
-            cell[1][1] - cell[1][0],
-            edgecolor="black",
-            facecolor="none",
-        )
-        ax.add_patch(rect)
-        ax.plot(point[0], point[1], c="tab:red", marker="o", markersize=2)  # Plot the center point
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_xlabel(r"$x_1$")
+        ax.set_ylabel(r"$x_2$")
+        ax.set_title("Cells with centers")
 
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.set_xlabel(r"$x_1$")
-    ax.set_ylabel(r"$x_2$")
-    ax.set_title("Cells with centers")
+        if path is not None:
+            fig.savefig(path)
 
-    if path is not None:
-        fig.savefig(path)
+        result_fig = fig
+        plt.close(fig)
 
-    return fig
+    return result_fig

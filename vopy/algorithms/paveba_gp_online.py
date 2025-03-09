@@ -1,5 +1,6 @@
 import logging
 
+import torch
 import gpytorch
 import numpy as np
 
@@ -53,12 +54,14 @@ class PaVeBaGPOnline(PALAlgorithm):
         conf_contraction: float = 32,
         batch_size: int = 1,
         initial_sample_cnt: int = 10,
+        reset_on_retrain: bool = False,
     ) -> None:
         super().__init__(epsilon, delta)
 
         self.order = order
         self.batch_size = batch_size
         self.conf_contraction = conf_contraction
+        self.reset_on_retrain = reset_on_retrain
 
         self.problem = problem
 
@@ -69,18 +72,26 @@ class PaVeBaGPOnline(PALAlgorithm):
             self.problem.in_data, self.m, confidence_type="hyperrectangle"
         )
 
-        kernel_type = gpytorch.kernels.MaternKernel
-        kernel_prior = gpytorch.priors.GammaPrior(3.0, 6.0)
+        mean_module = self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([self.m]))
+        covar_module = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.MaternKernel(
+                nu=5 / 2,
+                batch_shape=torch.Size([self.m]),
+                ard_num_dims=self.d,
+                lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
+            ),
+            batch_shape=torch.Size([self.m]),
+        )
         input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
         output_transform = StandardizeOutput(self.m)
         self.model = IndependentExactGPyTorchModel(
             self.d,
             self.m,
-            kernel_type=kernel_type,
-            kernel_prior=kernel_prior,
             noise_rank=0,
             input_transform=input_transform,
             output_transform=output_transform,
+            mean_module=mean_module,
+            covar_module=covar_module,
         )
 
         self.initial_sampling(initial_sample_cnt=initial_sample_cnt)
@@ -88,11 +99,14 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
 
+        self.reset_sets()
+        self.round = 0
+        self.sample_count = 0
+
+    def reset_sets(self):
         self.S = set(range(self.design_space.cardinality))
         self.P = set()
         self.U = set()
-        self.round = 0
-        self.sample_count = 0
 
     def initial_sampling(self, initial_sample_cnt: int = 5):
         """
@@ -108,6 +122,8 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.model.add_sample(initial_points, initial_values)
         self.model.update()
         self.model.train()
+        if self.reset_on_retrain:
+            self.reset_sets()
 
     def modeling(self):
         """

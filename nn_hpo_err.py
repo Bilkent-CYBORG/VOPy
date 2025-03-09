@@ -20,7 +20,7 @@ from vopy.order import ConeTheta2DOrder
 
 
 logging.basicConfig(level=logging.INFO)
-botorch.settings.debug._set_state(True)
+# botorch.settings.debug._set_state(True)
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 DIR = ".."
 BATCHSIZE = 128
@@ -116,7 +116,7 @@ def optuna_objective(trial):
 if __name__ == "__main__":
     lr_range = list(range(1, 6))
     n_layers_range = list(range(1, 4))
-    n_units_range = list(range(16, 32))
+    n_units_range = list(range(16, 128, 4))
 
     # Optuna
     study = optuna.create_study(directions=["maximize", "maximize"])
@@ -130,14 +130,16 @@ if __name__ == "__main__":
     epsilon = 0.01
     delta = 0.05
     order = ConeTheta2DOrder(90)
-    conf_contraction = 1
+    conf_contraction = 16
+    init_sample_cnt = 10
+
     paveba = PaVeBaGPOnline(
         epsilon,
         delta,
         vopy_problem,
         order,
         conf_contraction=conf_contraction,
-        initial_sample_cnt=10,
+        initial_sample_cnt=init_sample_cnt,
     )
 
     while True:

@@ -78,11 +78,12 @@ class MultitaskExactGPModel(gpytorch.models.ExactGP):
     :type train_targets: torch.Tensor
     :param likelihood: Gaussian likelihood module.
     :type likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood
-    :param kernel: Kernel type for covariance computation.
-    :type kernel: type[gpytorch.kernels.Kernel]
-    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
-        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
-    :type kernel_prior: Optional[gpytorch.priors.Prior]
+    :param covar_module: Covariance module for the GP model. If None, a default module will be
+        created. Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
+    :param mean_module: Mean module for the GP model. If None, a default module will be created.
+        Defaults to None.
     """
 
     def __init__(
@@ -90,27 +91,33 @@ class MultitaskExactGPModel(gpytorch.models.ExactGP):
         train_inputs: torch.Tensor,
         train_targets: torch.Tensor,
         likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood,
-        kernel: type[gpytorch.kernels.Kernel],
-        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
+        mean_module: Optional[gpytorch.means.Mean] = None,
+        covar_module: Optional[gpytorch.kernels.Kernel] = None,
     ):
         super().__init__(train_inputs, train_targets, likelihood)
 
         input_dim = train_inputs.shape[-1]
         output_dim = train_targets.shape[-1]
 
-        self.mean_module = gpytorch.means.MultitaskMean(
-            gpytorch.means.ZeroMean(), num_tasks=output_dim
-        )
+        if mean_module is None:
+            self.mean_module = gpytorch.means.MultitaskMean(
+                gpytorch.means.ZeroMean(), num_tasks=output_dim
+            )
+            self.mean_module.requires_grad_(True)
+        else:
+            self.mean_module = mean_module
 
-        self.base_covar_module = kernel(
-            ard_num_dims=input_dim, lengthscale_prior=kernel_prior
-        )  # Scale kernel is unnecessary because of the multitask kernel.
-        self.covar_module = gpytorch.kernels.MultitaskKernel(
-            self.base_covar_module, num_tasks=output_dim, rank=output_dim
-        )
-
-        self.mean_module.requires_grad_(True)
-        self.covar_module.requires_grad_(True)
+        if covar_module is None:
+            self.base_covar_module = gpytorch.kernels.RBFKernel(
+                ard_num_dims=input_dim,
+                lengthscale_prior=gpytorch.priors.GammaPrior(3.0, 6.0),
+            )
+            self.covar_module = gpytorch.kernels.MultitaskKernel(
+                self.base_covar_module, num_tasks=output_dim, rank=output_dim
+            )
+            self.covar_module.requires_grad_(True)
+        else:
+            self.covar_module = covar_module
 
     def forward(self, x: torch.Tensor) -> gpytorch.distributions.MultitaskMultivariateNormal:
         """
@@ -136,11 +143,12 @@ class BatchIndependentExactGPModel(gpytorch.models.ExactGP):
     :type train_targets: torch.Tensor
     :param likelihood: Gaussian likelihood module.
     :type likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood
-    :param kernel: Kernel type for covariance computation.
-    :type kernel: type[gpytorch.kernels.Kernel]
-    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
-        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
-    :type kernel_prior: Optional[gpytorch.priors.Prior]
+    :param mean_module: Mean module for the GP model. If None, a default module will be created.
+        Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
+    :param covar_module: Covariance module for the GP model. If None, a default module will be
+        created. Defaults to None.
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
     """
 
     def __init__(
@@ -148,24 +156,28 @@ class BatchIndependentExactGPModel(gpytorch.models.ExactGP):
         train_inputs: torch.Tensor,
         train_targets: torch.Tensor,
         likelihood: gpytorch.likelihoods.MultitaskGaussianLikelihood,
-        kernel: type[gpytorch.kernels.Kernel],
-        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
+        mean_module: Optional[gpytorch.means.Mean] = None,
+        covar_module: Optional[gpytorch.kernels.Kernel] = None,
     ):
         super().__init__(train_inputs, train_targets, likelihood)
 
         input_dim = train_inputs.shape[-1]
         output_dim = train_targets.shape[-1]
 
-        self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([output_dim]))
+        if mean_module is None:
+            self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([output_dim]))
+        else:
+            self.mean_module = mean_module
 
-        self.covar_module = gpytorch.kernels.ScaleKernel(
-            kernel(
+        if covar_module is None:
+            self.covar_module = gpytorch.kernels.ScaleKernel(
+                gpytorch.kernels.RBFKernel(
+                    batch_shape=torch.Size([output_dim]), ard_num_dims=input_dim
+                ),
                 batch_shape=torch.Size([output_dim]),
-                ard_num_dims=input_dim,
-                lengthscale_prior=kernel_prior,
-            ),
-            batch_shape=torch.Size([output_dim]),
-        )
+            )
+        else:
+            self.covar_module = covar_module
 
         self.mean_module.requires_grad_(True)
         self.covar_module.requires_grad_(True)
@@ -196,17 +208,12 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
     :type output_dim: int
     :param model_kind: Type of Exact GP model to be used.
     :type model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]]
-    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
-        `gpytorch.kernels.RBFKernel`.
-    :type kernel_type: type[gpytorch.kernels.Kernel]
-    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
-        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
-    :type kernel_prior: gpytorch.priors.Prior
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
     :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
-        provided if :obj:`noise_var` is None.
+        provided if :obj:`noise_var` is None. For details, see
+        `gpytorch.likelihoods.MultitaskGaussianLikelihood`. No global noise is assumed.
     :type noise_rank: Optional[int]
     :param input_transform: An input transform to apply on training and prediction data. Defaults
         to None. Generally, normalization should be applied.
@@ -214,6 +221,12 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
     :param output_transform: An output transform to apply on training and prediction data. Defaults
         to None. Generally, standardization should be applied.
     :type output_transform: Optional[OutputTransform]
+    :param mean_module: Mean module for the GP model. If None, a default module will be created
+        when the model is instantiated. Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
+    :param covar_module: Covariance module for the GP model. If None, a default module will be
+        created when the model is instantiated. Defaults to None.
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
     """
 
     def __init__(
@@ -221,12 +234,12 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         input_dim: int,
         output_dim: int,
         model_kind: type[Union[BatchIndependentExactGPModel, MultitaskExactGPModel]],
-        kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
-        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
         output_transform: Optional[OutputTransform] = None,
+        mean_module: Optional[gpytorch.means.Mean] = None,
+        covar_module: Optional[gpytorch.kernels.Kernel] = None,
     ) -> None:
         super().__init__()
 
@@ -249,30 +262,39 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
 
         # Set up likelihood
         if noise_rank is not None:
+            if noise_rank < 0 or noise_rank > self.output_dim:
+                raise ValueError("Invalid noise rank provided.")
             self.noise_var = noise_var
             self.noise_rank = noise_rank
         else:
             self.noise_var = self.to_tensor(noise_var)
-            self.noise_rank = len(self.noise_var) if self.noise_var.dim() > 1 else 0
+            if self.noise_var.dim() == 0:
+                self.noise_var = self.noise_var.expand(self.output_dim)
+
+            if self.noise_var.dim() == 2 and self.noise_var.shape[1] != self.output_dim:
+                raise ValueError("Noise covariance must be square.")
+
+            self.noise_rank = self.output_dim if self.noise_var.dim() > 1 else 0
 
         self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
             num_tasks=self.output_dim,
             rank=self.noise_rank,
             noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
-            has_task_noise=False,
+            has_global_noise=False,
+            has_task_noise=True,
         ).to(self.device)
 
         if self.noise_var is not None:
             if self.noise_rank == 0:
-                self.likelihood.noise = self.noise_var
+                self.likelihood.task_noises = self.noise_var
             else:
                 self.likelihood.task_noise_covar = self.noise_var
             self.likelihood.requires_grad_(False)
         else:
             self.likelihood.requires_grad_(True)
 
-        self.kernel_type = kernel_type
-        self.kernel_prior = kernel_prior
+        self.mean_module = mean_module
+        self.covar_module = covar_module
         self.model = None
 
     def add_sample(self, X_t: ArrayLike, Y_t: ArrayLike):
@@ -307,7 +329,6 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         """
         Create GP model or update it with the current training data.
         """
-
         if self.input_transform is not None:
             inputs = self.input_transform.fit_transform(self.train_inputs.numpy(force=True))
             inputs = self.to_tensor(inputs)
@@ -322,7 +343,7 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
 
         if self.model is None:
             self.model = self.model_kind(
-                inputs, targets, self.likelihood, self.kernel_type, self.kernel_prior
+                inputs, targets, self.likelihood, self.mean_module, self.covar_module
             )
             self.model = self.model.to(self.device)
         else:
@@ -335,7 +356,6 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         """
         Train the hyperparameters of GP model.
         """
-
         self.model.train()
         self.likelihood.train()
 
@@ -357,7 +377,6 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         :return: Evaluated kernel matrix.
         :rtype: np.ndarray
         """
-
         if self.model is None:
             raise AssertionError("Kernel evaluated before model initialization.")
 
@@ -378,7 +397,6 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         :return: Lengthscales and variances as arrays.
         :rtype: tuple[np.ndarray, np.ndarray]
         """
-
         if self.model is None:
             raise AssertionError("Model not initialized.")
 
@@ -401,11 +419,6 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
-    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
-        `gpytorch.kernels.RBFKernel`.
-    :type kernel_type: type[gpytorch.kernels.Kernel]
-    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
-        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
@@ -418,29 +431,35 @@ class CorrelatedExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :param output_transform: An output transform to apply on training and prediction data. Defaults
         to None. Generally, standardization should be applied.
     :type output_transform: Optional[OutputTransform]
+    :param mean_module: Mean module for the GP model. If None, a default zero mean will be created.
+        Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
+    :param covar_module: Covariance module for the GP model. If None, a default RBF kernel will be
+        created. Defaults to None.
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
     """
 
     def __init__(
         self,
         input_dim: int,
         output_dim: int,
-        kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
-        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
         output_transform: Optional[OutputTransform] = None,
+        mean_module: Optional[gpytorch.means.Mean] = None,
+        covar_module: Optional[gpytorch.kernels.Kernel] = None,
     ) -> None:
         super().__init__(
             input_dim,
             output_dim,
             MultitaskExactGPModel,
-            kernel_type,
-            kernel_prior,
             noise_var,
             noise_rank,
             input_transform,
             output_transform,
+            mean_module,
+            covar_module,
         )
 
     def predict(self, test_X: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
@@ -478,11 +497,6 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
-    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
-        `gpytorch.kernels.RBFKernel`.
-    :type kernel_type: type[gpytorch.kernels.Kernel]
-    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
-        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
@@ -495,29 +509,35 @@ class IndependentExactGPyTorchModel(GPyTorchMultioutputExactModel):
     :param output_transform: An output transform to apply on training and prediction data. Defaults
         to None. Generally, standardization should be applied.
     :type output_transform: Optional[OutputTransform]
+    :param mean_module: Mean module for the GP model. If None, a default batch of zero means
+        will be created. Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
+    :param covar_module: Covariance module for the GP model. If None, a default batch of
+        RBF kernels will be created. Defaults to None.
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
     """
 
     def __init__(
         self,
         input_dim: int,
         output_dim: int,
-        kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
-        kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
         noise_var: Optional[Union[float, ArrayLike]] = None,
         noise_rank: Optional[int] = None,
         input_transform: Optional[InputTransform] = None,
         output_transform: Optional[OutputTransform] = None,
+        mean_module: Optional[gpytorch.means.Mean] = None,
+        covar_module: Optional[gpytorch.kernels.Kernel] = None,
     ) -> None:
         super().__init__(
             input_dim,
             output_dim,
-            kernel_type,
-            kernel_prior,
             BatchIndependentExactGPModel,
             noise_var,
             noise_rank,
             input_transform,
             output_transform,
+            mean_module,
+            covar_module,
         )
 
     def predict(self, test_X: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
@@ -550,12 +570,12 @@ def get_gpytorch_model_w_known_hyperparams(
     model_class: type[Union[CorrelatedExactGPyTorchModel, IndependentExactGPyTorchModel]],
     problem: Problem,
     initial_sample_cnt: int,
-    kernel_type: type[gpytorch.kernels.Kernel] = gpytorch.kernels.RBFKernel,
-    kernel_prior: gpytorch.priors.Prior = gpytorch.priors.GammaPrior(3.0, 6.0),
     noise_var: Optional[Union[float, ArrayLike]] = None,
     noise_rank: Optional[int] = None,
     input_transform: Optional[InputTransform] = None,
     output_transform: Optional[OutputTransform] = None,
+    mean_module: Optional[gpytorch.means.Mean] = None,
+    covar_module: Optional[gpytorch.kernels.Kernel] = None,
     X: Optional[np.ndarray] = None,
     Y: Optional[np.ndarray] = None,
 ) -> GPyTorchMultioutputExactModel:
@@ -565,20 +585,14 @@ def get_gpytorch_model_w_known_hyperparams(
     takes the initial samples to jump-start the GP.
 
     :param model_class: Class of the GP model to instantiate.
-    :type model_class: type
+    :type model_class: type[Union[CorrelatedExactGPyTorchModel, IndependentExactGPyTorchModel]]
     :param problem: Problem instance defining the optimization problem.
     :type problem: Problem
     :param initial_sample_cnt: Number of initial samples to jump-start the GP.
     :type initial_sample_cnt: int
-    :param kernel_type: Type of kernel to be used for the covariance module. Defaults to
-        `gpytorch.kernels.RBFKernel`.
-    :type kernel_type: type[gpytorch.kernels.Kernel]
-    :param kernel_prior: Prior for the kernel lengthscale. Defaults to
-        `gpytorch.priors.GammaPrior(3.0, 6.0)`.
     :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
         Defaults to None. This should only be provided if :obj:`noise_rank` is None.
     :type noise_var: Optional[Union[float, ArrayLike]]
-    :param noise_rank:
     :param noise_rank: Rank of the noise covariance matrix. Defaults to None. This should only be
         provided if :obj:`noise_var` is None.
     :type noise_rank: Optional[int]
@@ -588,6 +602,12 @@ def get_gpytorch_model_w_known_hyperparams(
     :param output_transform: An output transform to apply on training and prediction data. Defaults
         to None. Generally, standardization should be applied.
     :type output_transform: Optional[OutputTransform]
+    :param mean_module: Mean module for the GP model. If None, a default module will be created
+        based on the model_class. Defaults to None.
+    :param covar_module: Covariance module for the GP model. If None, a default module will be
+        created based on the model_class. Defaults to None.
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
+    :type mean_module: Optional[gpytorch.means.Mean]
     :param X: Input data for training the hyperparameters and taking the initial samples.
     :type X: Optional[np.ndarray]
     :param Y: Target data for training the hyperparameters and taking the initial samples.
@@ -608,12 +628,12 @@ def get_gpytorch_model_w_known_hyperparams(
     model = model_class(
         in_dim,
         out_dim,
-        kernel_type,
-        kernel_prior,
         noise_var=noise_var,
         noise_rank=noise_rank,
         input_transform=input_transform,
         output_transform=output_transform,
+        mean_module=mean_module,
+        covar_module=covar_module,
     )
 
     model.add_sample(X, Y)

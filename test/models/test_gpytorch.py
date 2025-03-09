@@ -33,7 +33,7 @@ class TestMultitaskExactGPModel(unittest.TestCase):
         self.X = torch.randn(10, 2)
         self.Y = torch.randn(10, 2)
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.Y.shape[-1])
-        self.model = MultitaskExactGPModel(self.X, self.Y, self.likelihood, RBFKernel)
+        self.model = MultitaskExactGPModel(self.X, self.Y, self.likelihood)
 
     def test_forward(self):
         """Test forward pass of MultitaskExactGPModel."""
@@ -50,7 +50,7 @@ class TestBatchIndependentExactGPModel(unittest.TestCase):
         self.X = torch.randn(10, 2)
         self.Y = torch.randn(10, 2)
         self.likelihood = GaussianLikelihood()
-        self.model = BatchIndependentExactGPModel(self.X, self.Y, self.likelihood, RBFKernel)
+        self.model = BatchIndependentExactGPModel(self.X, self.Y, self.likelihood)
 
     def test_forward(self):
         """Test forward pass of BatchIndependentExactGPModel."""
