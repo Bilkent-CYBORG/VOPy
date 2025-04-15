@@ -73,21 +73,37 @@ class PaVeBaGPOnline(PALAlgorithm):
         )
 
         mean_module = self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([self.m]))
-        covar_module = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.MaternKernel(
-                nu=5 / 2,
-                batch_shape=torch.Size([self.m]),
-                ard_num_dims=self.d,
-                lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
-            ),
+        # covar_module = gpytorch.kernels.ScaleKernel(
+        #     gpytorch.kernels.MaternKernel(
+        #         nu=5 / 2,
+        #         batch_shape=torch.Size([self.m]),
+        #         ard_num_dims=self.d,
+        #         lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
+        #     ),
+        #     batch_shape=torch.Size([self.m]),
+        # )
+
+        matern_kernel = gpytorch.kernels.MaternKernel(
+            nu=5 / 2,
             batch_shape=torch.Size([self.m]),
+            ard_num_dims=self.d,
+            lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
         )
+        linear_kernel = gpytorch.kernels.LinearKernel(
+            batch_shape=torch.Size([self.m]),
+            ard_num_dims=self.d,
+        )
+        # Sum the two kernels to form a composite kernel
+        covar_module = gpytorch.kernels.ScaleKernel(
+            matern_kernel + linear_kernel, batch_shape=torch.Size([self.m])
+        )
+
         input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
         output_transform = StandardizeOutput(self.m)
         self.model = IndependentExactGPyTorchModel(
             self.d,
             self.m,
-            noise_rank=0,
+            noise_rank=self.m,
             input_transform=input_transform,
             output_transform=output_transform,
             mean_module=mean_module,
@@ -95,6 +111,8 @@ class PaVeBaGPOnline(PALAlgorithm):
         )
 
         self.initial_sampling(initial_sample_cnt=initial_sample_cnt)
+
+        exit()
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
@@ -115,15 +133,19 @@ class PaVeBaGPOnline(PALAlgorithm):
         :param initial_sample_cnt: Number of initial samples to be taken.
         :type initial_sample_cnt: int
         """
-        initial_indices = np.random.choice(len(self.problem.in_data), initial_sample_cnt)
+        # initial_indices = np.random.choice(len(self.problem.in_data), initial_sample_cnt)
+        initial_indices = np.arange(initial_sample_cnt)
         initial_points = self.problem.in_data[initial_indices]
         initial_values = self.problem.evaluate(initial_points)
 
         self.model.add_sample(initial_points, initial_values)
         self.model.update()
         self.model.train()
-        if self.reset_on_retrain:
-            self.reset_sets()
+
+        print("Ground truth:")
+        print(self.model.output_transform.transform(initial_values))
+        print("Predictions:")
+        print(self.model.predict(self.design_space.points[:initial_sample_cnt])[0])
 
     def modeling(self):
         """
@@ -217,6 +239,8 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.model.add_sample(candidate_list, observations)
         self.model.update()
         self.model.train()
+        if self.reset_on_retrain:
+            self.reset_sets()
 
     def run_one_step(self) -> bool:
         """

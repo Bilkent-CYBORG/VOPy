@@ -172,7 +172,8 @@ class BatchIndependentExactGPModel(gpytorch.models.ExactGP):
         if covar_module is None:
             self.covar_module = gpytorch.kernels.ScaleKernel(
                 gpytorch.kernels.RBFKernel(
-                    batch_shape=torch.Size([output_dim]), ard_num_dims=input_dim
+                    batch_shape=torch.Size([output_dim]),
+                    ard_num_dims=input_dim,
                 ),
                 batch_shape=torch.Size([output_dim]),
             )
@@ -352,7 +353,7 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         self.model.eval()
         self.likelihood.eval()
 
-    def train(self):
+    def train(self, lr=0.01, training_iterations: int = 1000):
         """
         Train the hyperparameters of GP model.
         """
@@ -361,8 +362,35 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.model)
 
+        # optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+
         logging.info("Training started.")
         fit_gpytorch_mll(mll)
+        # for i in range(training_iterations):
+        #     # should_print = True if i == 0 or i == training_iterations - 1 else False
+        #     should_print = False
+
+        #     def closure():
+        #         nonlocal should_print
+
+        #         # Zero backprop gradients
+        #         optimizer.zero_grad(set_to_none=True)
+
+        #         # Get output from model
+        #         output = self.model(self.model.train_inputs[0])
+
+        #         # Calculate loss and backprop derivatives
+        #         loss = -mll(output, self.model.train_targets)
+        #         loss.backward()
+
+        #         log_text = f"Train iter {i + 1}/{training_iterations} - Loss: {loss.item():.3f}"
+        #         if should_print:
+        #             logging.info(log_text)
+        #             should_print = False
+
+        #         return loss
+
+        #     optimizer.step(closure)
         logging.info("Training done.")
 
         self.model.eval()

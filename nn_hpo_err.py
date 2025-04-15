@@ -13,6 +13,10 @@ import torchvision
 from fvcore.nn import FlopCountAnalysis
 
 import botorch
+from botorch.fit import fit_gpytorch_mll
+from botorch.models.transforms.input import Normalize
+from botorch.models.transforms.outcome import Standardize
+from gpytorch.mlls import ExactMarginalLogLikelihood
 
 from vopy.algorithms import PaVeBaGPOnline
 from vopy.maximization_problem import FixedPointsProblem
@@ -25,7 +29,7 @@ DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 DIR = ".."
 BATCHSIZE = 128
 N_TRAIN_EXAMPLES = BATCHSIZE * 30
-N_VALID_EXAMPLES = BATCHSIZE * 10
+N_VALID_EXAMPLES = BATCHSIZE * 30
 INPUT_SIZE = 28 * 28
 
 
@@ -115,11 +119,11 @@ def optuna_objective(trial):
 
 if __name__ == "__main__":
     lr_range = list(range(1, 6))
-    n_layers_range = list(range(1, 4))
+    n_layers_range = list(range(1, 5))
     n_units_range = list(range(16, 128, 4))
 
     # Optuna
-    study = optuna.create_study(directions=["maximize", "maximize"])
+    # study = optuna.create_study(directions=["maximize", "maximize"])
     # study.optimize(optuna_objective, n_trials=10, timeout=120)
     # print("Number of finished trials: ", len(study.trials))
 
@@ -131,8 +135,36 @@ if __name__ == "__main__":
     delta = 0.05
     order = ConeTheta2DOrder(90)
     conf_contraction = 16
-    init_sample_cnt = 10
+    init_sample_cnt = 5
 
+    # BoTorch
+    initial_indices = np.arange(init_sample_cnt)
+    initial_points = vopy_problem.in_data[initial_indices]
+    initial_values = vopy_problem.evaluate(initial_points)
+
+    model = botorch.models.SingleTaskGP(
+        train_X=torch.tensor(initial_points, dtype=torch.float32),
+        train_Y=torch.tensor(initial_values, dtype=torch.float32),
+        input_transform=Normalize(d=3, bounds=torch.tensor(vopy_problem.bounds).T),
+        outcome_transform=Standardize(m=2),
+    ).to(DEVICE)
+
+    model.train()
+    mll = ExactMarginalLogLikelihood(model.likelihood, model)
+    print(model.covar_module.base_kernel.lengthscale)
+    logging.info("Training started.")
+    fit_gpytorch_mll(mll)
+    logging.info("Training done.")
+    print(model.covar_module.base_kernel.lengthscale)
+    model.eval()
+
+    with torch.no_grad(), torch.autograd.set_detect_anomaly(True):
+        print(initial_values)
+        print(model(torch.tensor(initial_points, dtype=torch.float32)).mean.T)
+
+    exit()
+
+    # PaVeBaGPOnline
     paveba = PaVeBaGPOnline(
         epsilon,
         delta,
