@@ -1,9 +1,11 @@
 # Files
 .coverage
+uv.lock
 
 # Folders
 .vscode/
 __pycache__/
+.venv/
 
 dist/
 *.egg-info/

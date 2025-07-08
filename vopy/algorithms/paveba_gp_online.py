@@ -11,6 +11,7 @@ from vopy.design_space import FixedPointsDesignSpace
 from vopy.maximization_problem import FixedPointsProblem
 from vopy.models import IndependentExactGPyTorchModel
 
+from vopy.models import Model
 from vopy.order import PolyhedralConeOrder
 from vopy.utils.transforms import NormalizeInput, StandardizeOutput
 
@@ -55,6 +56,7 @@ class PaVeBaGPOnline(PALAlgorithm):
         batch_size: int = 1,
         initial_sample_cnt: int = 10,
         reset_on_retrain: bool = False,
+        model: Model = None,
     ) -> None:
         super().__init__(epsilon, delta)
 
@@ -72,47 +74,36 @@ class PaVeBaGPOnline(PALAlgorithm):
             self.problem.in_data, self.m, confidence_type="hyperrectangle"
         )
 
-        mean_module = self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([self.m]))
-        # covar_module = gpytorch.kernels.ScaleKernel(
-        #     gpytorch.kernels.MaternKernel(
-        #         nu=5 / 2,
-        #         batch_shape=torch.Size([self.m]),
-        #         ard_num_dims=self.d,
-        #         lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
-        #     ),
-        #     batch_shape=torch.Size([self.m]),
-        # )
+        if model is None:
+            mean_module = self.mean_module = gpytorch.means.ZeroMean(
+                batch_shape=torch.Size([self.m])
+            )
 
-        matern_kernel = gpytorch.kernels.MaternKernel(
-            nu=5 / 2,
-            batch_shape=torch.Size([self.m]),
-            ard_num_dims=self.d,
-            lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
-        )
-        linear_kernel = gpytorch.kernels.LinearKernel(
-            batch_shape=torch.Size([self.m]),
-            ard_num_dims=self.d,
-        )
-        # Sum the two kernels to form a composite kernel
-        covar_module = gpytorch.kernels.ScaleKernel(
-            matern_kernel + linear_kernel, batch_shape=torch.Size([self.m])
-        )
+            matern_kernel = gpytorch.kernels.MaternKernel(
+                nu=5 / 2,
+                batch_shape=torch.Size([self.m]),
+                ard_num_dims=self.d,
+                lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
+            )
+            covar_module = gpytorch.kernels.ScaleKernel(
+                matern_kernel, batch_shape=torch.Size([self.m])
+            )
 
-        input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
-        output_transform = StandardizeOutput(self.m)
-        self.model = IndependentExactGPyTorchModel(
-            self.d,
-            self.m,
-            noise_rank=self.m,
-            input_transform=input_transform,
-            output_transform=output_transform,
-            mean_module=mean_module,
-            covar_module=covar_module,
-        )
+            input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
+            output_transform = StandardizeOutput(self.m)
+            self.model = IndependentExactGPyTorchModel(
+                self.d,
+                self.m,
+                noise_rank=self.m,
+                input_transform=input_transform,
+                output_transform=output_transform,
+                mean_module=mean_module,
+                covar_module=covar_module,
+            )
+        else:
+            self.model = model
 
         self.initial_sampling(initial_sample_cnt=initial_sample_cnt)
-
-        exit()
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
@@ -126,26 +117,20 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.P = set()
         self.U = set()
 
-    def initial_sampling(self, initial_sample_cnt: int = 5):
+    def initial_sampling(self, initial_sample_cnt: int):
         """
         Initial sampling from the design space to start the algorithm.
 
         :param initial_sample_cnt: Number of initial samples to be taken.
         :type initial_sample_cnt: int
         """
-        # initial_indices = np.random.choice(len(self.problem.in_data), initial_sample_cnt)
-        initial_indices = np.arange(initial_sample_cnt)
+        initial_indices = np.random.choice(len(self.problem.in_data), initial_sample_cnt)
         initial_points = self.problem.in_data[initial_indices]
         initial_values = self.problem.evaluate(initial_points)
 
         self.model.add_sample(initial_points, initial_values)
         self.model.update()
         self.model.train()
-
-        print("Ground truth:")
-        print(self.model.output_transform.transform(initial_values))
-        print("Predictions:")
-        print(self.model.predict(self.design_space.points[:initial_sample_cnt])[0])
 
     def modeling(self):
         """

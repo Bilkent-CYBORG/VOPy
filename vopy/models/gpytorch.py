@@ -1,6 +1,8 @@
 import logging
 from abc import ABC
+
 from typing import List, Literal, Optional, Union
+from numpy.typing import ArrayLike
 
 import gpytorch
 
@@ -9,13 +11,12 @@ import numpy as np
 import torch
 from botorch.fit import fit_gpytorch_mll
 from gpytorch.mlls import SumMarginalLogLikelihood
-from numpy.typing import ArrayLike
-
 from vopy.maximization_problem import Problem
 from vopy.models.model import GPModel, ModelList
 
 from vopy.utils.transforms import InputTransform, OutputTransform
 from vopy.utils.utils import generate_sobol_samples
+
 
 torch.set_default_dtype(torch.float64)
 
@@ -66,7 +67,6 @@ class GPyTorchModel(GPModel, ABC):
                 return "Other"
 
 
-# TODO: Make GPyTorch models optionally take covar_module and mean_module.
 class MultitaskExactGPModel(gpytorch.models.ExactGP):
     """
     Exact GP model for multitask problems with dependent objectives, *i.e.*, a Linear Model
@@ -265,7 +265,7 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         if noise_rank is not None:
             if noise_rank < 0 or noise_rank > self.output_dim:
                 raise ValueError("Invalid noise rank provided.")
-            self.noise_var = noise_var
+            self.noise_var = noise_var  # None
             self.noise_rank = noise_rank
         else:
             self.noise_var = self.to_tensor(noise_var)
@@ -632,10 +632,10 @@ def get_gpytorch_model_w_known_hyperparams(
     :type output_transform: Optional[OutputTransform]
     :param mean_module: Mean module for the GP model. If None, a default module will be created
         based on the model_class. Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
     :param covar_module: Covariance module for the GP model. If None, a default module will be
         created based on the model_class. Defaults to None.
     :type covar_module: Optional[gpytorch.kernels.Kernel]
-    :type mean_module: Optional[gpytorch.means.Mean]
     :param X: Input data for training the hyperparameters and taking the initial samples.
     :type X: Optional[np.ndarray]
     :param Y: Target data for training the hyperparameters and taking the initial samples.
@@ -691,8 +691,12 @@ class SingleTaskGP(gpytorch.models.ExactGP):
     :type train_targets: torch.Tensor
     :param likelihood: Gaussian likelihood module.
     :type likelihood: gpytorch.likelihoods.GaussianLikelihood
-    :param kernel: Kernel function for the covariance module.
-    :type kernel: type[gpytorch.kernels.Kernel]
+    :param mean_module: Mean module for the GP model. If None, a default module will be created.
+        Defaults to None.
+    :type mean_module: Optional[gpytorch.means.Mean]
+    :param covar_module: Covariance module for the GP model. If None, a default module will be
+        created. Defaults to None.
+    :type covar_module: Optional[gpytorch.kernels.Kernel]
     """
 
     def __init__(
@@ -700,14 +704,24 @@ class SingleTaskGP(gpytorch.models.ExactGP):
         train_inputs: torch.Tensor,
         train_targets: torch.Tensor,
         likelihood: gpytorch.likelihoods.GaussianLikelihood,
-        kernel: type[gpytorch.kernels.Kernel],
+        mean_module: Optional[gpytorch.means.Mean] = None,
+        covar_module: Optional[gpytorch.kernels.Kernel] = None,
     ):
         super().__init__(train_inputs, train_targets, likelihood)
 
         input_dim = train_inputs.shape[-1]
 
-        self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(kernel(ard_num_dims=input_dim))
+        if mean_module is None:
+            self.mean_module = gpytorch.means.ConstantMean()
+        else:
+            self.mean_module = mean_module
+
+        if covar_module is None:
+            self.covar_module = gpytorch.kernels.ScaleKernel(
+                gpytorch.kernels.RBFKernel(ard_num_dims=input_dim)
+            )
+        else:
+            self.covar_module = covar_module
 
         self.mean_module.requires_grad_(True)
         self.covar_module.requires_grad_(True)
@@ -735,12 +749,37 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
     :type input_dim: int
     :param output_dim: Dimensionality of the output data.
     :type output_dim: int
-    :param noise_var: Noise variance for the Gaussian likelihood, which is assumed to be the
-        same for each objective.
-    :type noise_var: float
+    :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
+        Defaults to None.
+    :type noise_var: Optional[Union[float, ArrayLike]]
+    :param input_transform: An input transform to apply on training and prediction data. Defaults
+        to None. Generally, normalization should be applied.
+    :type input_transform: Optional[InputTransform]
+    :param output_transform: An output transform to apply on training and prediction data. Defaults
+        to None. Generally, standardization should be applied.
+    :type output_transform: Optional[OutputTransform]
+    :param mean_modules: Mean modules for the GP models. If None, a default module will be created
+        when each model is instantiated. Defaults to None. Can be a single module or a list of
+        modules, one for each output dimension.
+    :type mean_modules: Optional[Union[gpytorch.means.Mean, List[gpytorch.means.Mean]]]
+    :param covar_modules: Covariance modules for the GP models. If None, a default module will be
+        created when each model is instantiated. Defaults to None. Can be a single module or a list
+        of modules, one for each output dimension.
+    :type covar_modules: Optional[Union[gpytorch.kernels.Kernel, List[gpytorch.kernels.Kernel]]]
     """
 
-    def __init__(self, input_dim, output_dim, noise_var) -> None:
+    def __init__(
+        self,
+        input_dim,
+        output_dim,
+        noise_var: Optional[Union[float, ArrayLike]] = None,
+        input_transform: Optional[InputTransform] = None,
+        output_transform: Optional[OutputTransform] = None,
+        mean_modules: Optional[Union[gpytorch.means.Mean, List[gpytorch.means.Mean]]] = None,
+        covar_modules: Optional[
+            Union[gpytorch.kernels.Kernel, List[gpytorch.kernels.Kernel]]
+        ] = None,
+    ) -> None:
         super().__init__()
 
         self.device = "cpu"
@@ -748,19 +787,52 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
+        self.input_transform = input_transform
+        self.output_transform = output_transform
+
         # Data containers.
         self.clear_data()
 
         # Set up likelihood
-        self.noise_var = self.to_tensor(noise_var)
-        likelihood = gpytorch.likelihoods.GaussianLikelihood(
-            noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
-        ).to(self.device)
-        likelihood.noise = self.noise_var
-        likelihood.requires_grad_(False)
-        self.likelihoods = [likelihood] * self.output_dim
+        if noise_var is not None:
+            self.noise_var = self.to_tensor(noise_var)
+            if self.noise_var.dim() == 0:
+                self.noise_var = self.noise_var.expand(self.output_dim)
 
-        self.kernel_type = gpytorch.kernels.RBFKernel
+            if self.noise_var.dim() > 1 or len(self.noise_var) != self.output_dim:
+                raise ValueError(
+                    "ModelList GPyTorchModel expects noise_var to be a scalar"
+                    " or 1D array with size output_dim."
+                )
+
+        self.likelihoods = []
+        for i in range(self.output_dim):
+            l = gpytorch.likelihoods.GaussianLikelihood(
+                noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
+            ).to(self.device)
+
+            if self.noise_var is not None:
+                l.noise = self.noise_var[i]
+                l.requires_grad_(False)
+            else:
+                l.requires_grad_(True)
+
+            self.likelihoods.append(l)
+
+        if isinstance(mean_modules, list):
+            if len(mean_modules) != self.output_dim:
+                raise ValueError("If mean_module is a list, it should be of size output_dim.")
+            self.mean_modules = mean_modules
+        else:
+            self.mean_modules = [mean_modules] * self.output_dim
+
+        if isinstance(covar_modules, list):
+            if len(covar_modules) != self.output_dim:
+                raise ValueError("If covar_module is a list, it should be of size output_dim.")
+            self.covar_modules = covar_modules
+        else:
+            self.covar_modules = [covar_modules] * self.output_dim
+
         self.model = None
 
     def _add_sample_single(self, X_t: ArrayLike, Y_t: ArrayLike, dim_index: int):
@@ -829,13 +901,40 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
         """
         Create GP model or update it with the current training data.
         """
+        if self.input_transform is not None:
+            inputs = []
+            for obj_i in range(self.output_dim):
+                inputs.append(
+                    self.to_tensor(
+                        self.input_transform.fit_transform(
+                            self.train_inputs[obj_i].numpy(force=True)
+                        )
+                    )
+                )
+        else:
+            inputs = self.train_inputs
+
+        if self.output_transform is not None:
+            targets = []
+            for obj_i in range(self.output_dim):
+                targets.append(
+                    self.to_tensor(
+                        self.output_transform.fit_transform(
+                            self.train_targets[obj_i].numpy(force=True)
+                        )
+                    )
+                )
+        else:
+            targets = self.train_targets
+
         if self.model is None:
             models = [
                 SingleTaskGP(
-                    self.train_inputs[obj_i],
-                    self.train_targets[obj_i],
+                    inputs[obj_i],
+                    targets[obj_i],
                     self.likelihoods[obj_i],
-                    kernel=self.kernel_type,
+                    mean_module=self.mean_modules[obj_i],
+                    covar_module=self.covar_modules[obj_i],
                 )
                 for obj_i in range(self.output_dim)
             ]
@@ -845,9 +944,7 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
             )
         else:
             for obj_i in range(self.output_dim):
-                self.model.models[obj_i].set_train_data(
-                    self.train_inputs[obj_i], self.train_targets[obj_i], strict=False
-                )
+                self.model.models[obj_i].set_train_data(inputs[obj_i], targets[obj_i], strict=False)
 
         self.model.eval()
         self.likelihood.eval()
@@ -987,22 +1084,41 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
 
 def get_gpytorch_modellist_w_known_hyperparams(
     problem: Problem,
-    noise_var: float,
     initial_sample_cnt: int,
+    noise_var: Optional[Union[float, ArrayLike]] = None,
+    input_transform: Optional[InputTransform] = None,
+    output_transform: Optional[OutputTransform] = None,
+    mean_modules: Optional[Union[gpytorch.means.Mean, List[gpytorch.means.Mean]]] = None,
+    covar_modules: Optional[Union[gpytorch.kernels.Kernel, List[gpytorch.kernels.Kernel]]] = None,
     X: Optional[np.ndarray] = None,
     Y: Optional[np.ndarray] = None,
 ) -> GPyTorchModelListExactModel:
     """
     Creates and returns a GPyTorch model after training and freezing model parameters.
-    If X and Y is not given, sobol samples are evaluated to generate a learning dataset. Also,
+    If `X` and `Y` are not given, sobol samples are evaluated to generate a learning dataset. Also,
     takes the initial samples to jump-start the GP.
 
     :param problem: An instance of the optimization problem.
     :type problem: Problem
-    :param noise_var: Noise variance for Gaussian likelihood.
-    :type noise_var: float
     :param initial_sample_cnt: Number of initial samples to jump-start the GP.
     :type initial_sample_cnt: int
+    :param noise_var: Noise variance for Gaussian likelihood, if known noise variance is assumed.
+        Defaults to None.
+    :type noise_var: Optional[Union[float, ArrayLike]]
+    :param input_transform: An input transform to apply on training and prediction data. Defaults
+        to None. Generally, normalization should be applied.
+    :type input_transform: Optional[InputTransform]
+    :param output_transform: An output transform to apply on training and prediction data. Defaults
+        to None. Generally, standardization should be applied.
+    :type output_transform: Optional[OutputTransform]
+    :param mean_modules: Mean modules for the GP models. If None, a default module will be created
+        when each model is instantiated. Defaults to None. Can be a single module or a list of
+        modules, one for each output dimension.
+    :type mean_modules: Optional[Union[gpytorch.means.Mean, List[gpytorch.means.Mean]]]
+    :param covar_modules: Covariance modules for the GP models. If None, a default module will be
+        created when each model is instantiated. Defaults to None. Can be a single module or a list
+        of modules, one for each output dimension.
+    :type covar_modules: Optional[Union[gpytorch.kernels.Kernel, List[gpytorch.kernels.Kernel]]]
     :param X: Input data for training the hyperparameters and taking the initial samples.
     :type X: Optional[np.ndarray]
     :param Y: Target data for training the hyperparameters and taking the initial samples.
@@ -1018,7 +1134,15 @@ def get_gpytorch_modellist_w_known_hyperparams(
     in_dim = X.shape[1]
     out_dim = Y.shape[1]
 
-    model = GPyTorchModelListExactModel(in_dim, out_dim, noise_var=noise_var)
+    model = GPyTorchModelListExactModel(
+        input_dim=in_dim,
+        output_dim=out_dim,
+        noise_var=noise_var,
+        input_transform=input_transform,
+        output_transform=output_transform,
+        mean_modules=mean_modules,
+        covar_modules=covar_modules,
+    )
 
     for dim_i in range(out_dim):
         model.add_sample(X, Y[:, dim_i], dim_i)
