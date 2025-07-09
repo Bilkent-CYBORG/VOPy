@@ -214,7 +214,7 @@ class TestSingleTaskGP(unittest.TestCase):
         self.X = torch.randn(10, 2)
         self.Y = torch.randn(10)
         self.likelihood = GaussianLikelihood()
-        self.model = SingleTaskGP(self.X, self.Y, self.likelihood, RBFKernel)
+        self.model = SingleTaskGP(self.X, self.Y, self.likelihood)
 
     def test_forward(self):
         """Test forward pass of SingleTaskGP."""

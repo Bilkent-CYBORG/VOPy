@@ -99,7 +99,11 @@ class PaVeBaPartialGP(PALAlgorithm):
         self.problem = DecoupledEvaluationProblem(ProblemFromDataset(dataset, noise_var))
 
         self.model: GPyTorchModelListExactModel = get_gpytorch_modellist_w_known_hyperparams(
-            self.problem, noise_var, initial_sample_cnt=1, X=dataset.in_data, Y=dataset.out_data
+            self.problem,
+            initial_sample_cnt=1,
+            noise_var=noise_var,
+            X=dataset.in_data,
+            Y=dataset.out_data,
         )
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
