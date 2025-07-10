@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import torch
 import gpytorch
@@ -31,11 +32,15 @@ class PaVeBaGPOnline(PALAlgorithm):
     :param conf_contraction: Contraction coefficient to shrink the
         confidence regions empirically. Defaults to 32.
     :type conf_contraction: float
-    :param type: Specifies if the algorithm uses dependent ellipsoidal or
-        independent hyperrectangular confidence regions. Defaults to "IH".
-    :type type: Literal["IH", "DE"]
     :param batch_size: Number of samples to be taken in each round. Defaults to 1.
     :type batch_size: int
+    :param initial_sample_cnt: Number of initial samples to be taken before the algorithm starts.
+    :type initial_sample_cnt: int
+    :param reset_on_retrain: If True, resets the sets after each model retraining.
+        Defaults to False.
+    :type reset_on_retrain: bool
+    :param model: Predefined model to be used. If None, a default model is created.
+    :type model: Optional[Model]
 
     The algorithm sequentially samples design rewards. It uses Gaussian Process regression to model
     the rewards and confidence regions. It retratins the model after every observation.
@@ -56,7 +61,7 @@ class PaVeBaGPOnline(PALAlgorithm):
         batch_size: int = 1,
         initial_sample_cnt: int = 10,
         reset_on_retrain: bool = False,
-        model: Model = None,
+        model: Optional[Model] = None,
     ) -> None:
         super().__init__(epsilon, delta)
 
@@ -103,14 +108,14 @@ class PaVeBaGPOnline(PALAlgorithm):
         else:
             self.model = model
 
+        self.sample_count = 0
+        self.reset_sets()
+        self.round = 0
+
         self.initial_sampling(initial_sample_cnt=initial_sample_cnt)
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
-
-        self.reset_sets()
-        self.round = 0
-        self.sample_count = 0
 
     def reset_sets(self):
         self.S = set(range(self.design_space.cardinality))
@@ -131,6 +136,7 @@ class PaVeBaGPOnline(PALAlgorithm):
         self.model.add_sample(initial_points, initial_values)
         self.model.update()
         self.model.train()
+        self.sample_count += initial_sample_cnt
 
     def modeling(self):
         """

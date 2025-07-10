@@ -97,6 +97,7 @@ class FixedPointsProblem(Problem):
         return y
 
 
+# TODO: Consider making this class a child of :class:`FixedPointsProblem` to avoid code duplication.
 class ProblemFromDataset(Problem):
     """
     Define an evaluatable optimization problem using data from a given dataset.
