@@ -84,14 +84,18 @@ class PaVeBaGPOnline(PALAlgorithm):
                 batch_shape=torch.Size([self.m])
             )
 
-            matern_kernel = gpytorch.kernels.MaternKernel(
-                nu=5 / 2,
+            # matern_kernel = gpytorch.kernels.MaternKernel(
+            #     nu=5 / 2,
+            #     batch_shape=torch.Size([self.m]),
+            #     ard_num_dims=self.d,
+            #     lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
+            # )
+            rbf_kernel = gpytorch.kernels.RBFKernel(
                 batch_shape=torch.Size([self.m]),
                 ard_num_dims=self.d,
-                lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
             )
             covar_module = gpytorch.kernels.ScaleKernel(
-                matern_kernel, batch_shape=torch.Size([self.m])
+                rbf_kernel, batch_shape=torch.Size([self.m])
             )
 
             input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
@@ -217,7 +221,8 @@ class PaVeBaGPOnline(PALAlgorithm):
     def evaluating(self):
         """
         Observe the self.batch_size number of designs from active designs, selecting by
-        largest sum of variances and update the model.
+        largest sum of variances and update the model. If `self.reset_on_retrain` is True,
+        reset the running sets after retraining the model.
         """
         A = self.S.union(self.U)
         acq = SumVarianceAcquisition(self.model)

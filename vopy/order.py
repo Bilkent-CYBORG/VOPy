@@ -114,7 +114,7 @@ class PolyhedralConeOrder(Order):
         return np.array(pareto_indices, dtype=int)
 
     def plot_pareto_set(
-        self, elements: np.ndarray, path: Optional[Union[str, PathLike]] = None
+        self, elements: np.ndarray, path: Optional[Union[str, PathLike]] = None, show: bool = True
     ) -> plt.Figure:
         """
         Plots the Pareto front of the provided elements if the dimension is 2D or 3D.
@@ -125,6 +125,8 @@ class PolyhedralConeOrder(Order):
         :param path: The file path where the plot will be saved. If not provided,
             the plot will only be displayed. Default is `None`.
         :type path: Optional[Union[str, PathLike]]
+        :param show: Whether to show the plot or close it. If False, the figure is closed.
+        :type show: bool
         :return: The matplotlib figure containing the plot.
         :rtype: plt.Figure
         :raises ValueError: If :obj:`elements` is not a 2D array
@@ -135,7 +137,7 @@ class PolyhedralConeOrder(Order):
         if elements.shape[1] not in [2, 3]:
             raise ValueError("Only 2D and 3D plots are supported.")
 
-        fig = plot_pareto_front(elements, self.get_pareto_set(elements), path)
+        fig = plot_pareto_front(elements, self.get_pareto_set(elements), path, show)
 
         return fig
 

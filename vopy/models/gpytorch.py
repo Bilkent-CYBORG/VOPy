@@ -280,7 +280,7 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
         self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
             num_tasks=self.output_dim,
             rank=self.noise_rank,
-            noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
+            noise_constraint=gpytorch.constraints.GreaterThan(1e-6),
             has_global_noise=False,
             has_task_noise=True,
         ).to(self.device)
@@ -362,35 +362,9 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.model)
 
-        # optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-
         logging.info("Training started.")
-        fit_gpytorch_mll(mll)
-        # for i in range(training_iterations):
-        #     # should_print = True if i == 0 or i == training_iterations - 1 else False
-        #     should_print = False
-
-        #     def closure():
-        #         nonlocal should_print
-
-        #         # Zero backprop gradients
-        #         optimizer.zero_grad(set_to_none=True)
-
-        #         # Get output from model
-        #         output = self.model(self.model.train_inputs[0])
-
-        #         # Calculate loss and backprop derivatives
-        #         loss = -mll(output, self.model.train_targets)
-        #         loss.backward()
-
-        #         log_text = f"Train iter {i + 1}/{training_iterations} - Loss: {loss.item():.3f}"
-        #         if should_print:
-        #             logging.info(log_text)
-        #             should_print = False
-
-        #         return loss
-
-        #     optimizer.step(closure)
+        with gpytorch.settings.cholesky_max_tries(5), gpytorch.settings.cholesky_jitter(1e-4):
+            fit_gpytorch_mll(mll)
         logging.info("Training done.")
 
         self.model.eval()

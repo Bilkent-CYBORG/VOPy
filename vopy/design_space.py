@@ -389,7 +389,9 @@ class AdaptivelyDiscretizedDesignSpace(DiscreteDesignSpace):
             Vh[i] = 4 * term1 * (np.sqrt(C2 + 2 * term2 + term3 + term4) + C3)
         return Vh
 
-    def visualize_design_space(self, path: Optional[Union[str, PathLike]] = None):
+    def visualize_design_space(
+        self, path: Optional[Union[str, PathLike]] = None, show: bool = True
+    ):
         """
         Visualize the design space's current cell structure.
 
@@ -399,10 +401,12 @@ class AdaptivelyDiscretizedDesignSpace(DiscreteDesignSpace):
         :param path: The path to save the plot to. If not provided, the plot
             will only be displayed. Defaults to `None`.
         :type path: Optional[Union[str, PathLike]]
+        :param show: Whether to show the plot or close it. If False, the figure is closed.
+        :type show: bool
         :return: The Matplotlib figure object containing the plot.
         :rtype: plt.Figure
         """
 
-        fig = plot_cells_with_centers(self.cells, self.points, path)
+        fig = plot_cells_with_centers(self.cells, self.points, path, show)
 
         return fig

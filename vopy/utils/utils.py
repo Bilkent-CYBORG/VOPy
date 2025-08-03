@@ -104,8 +104,8 @@ def get_alpha_vec(W: np.ndarray) -> np.ndarray:
 
 
 def get_closest_indices_from_points(
-    pts_to_find: Iterable,
-    pts_to_check: Iterable,
+    pts_to_find: np.ndarray,
+    pts_to_check: np.ndarray,
     return_distances: bool = False,
     squared: bool = False,
 ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
