@@ -245,9 +245,6 @@ class VOGP(PALAlgorithm):
             `d1`, the Euclidean norm of the vector that gives `u_star` when normalized, _i.e._, `z`.
         :rtype: Tuple[np.ndarray, float]
         """
-
-        # TODO: Convert to CVXPY and check if efficient.
-
         cone_matrix = self.order.ordering_cone.W
 
         n = cone_matrix.shape[0]
@@ -274,7 +271,7 @@ class VOGP(PALAlgorithm):
         construe = np.all(constraint_func(res.x) + 1e-14)
 
         if not construe:
-            pass
+            raise ValueError("Could not compute the u_star vector for the given order.")
 
         return res.x / norm, norm
 

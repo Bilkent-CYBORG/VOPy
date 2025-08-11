@@ -84,12 +84,6 @@ class PaVeBaGPOnline(PALAlgorithm):
                 batch_shape=torch.Size([self.m])
             )
 
-            # matern_kernel = gpytorch.kernels.MaternKernel(
-            #     nu=5 / 2,
-            #     batch_shape=torch.Size([self.m]),
-            #     ard_num_dims=self.d,
-            #     lengthscale_prior=gpytorch.priors.GammaPrior(2, 3.0),
-            # )
             rbf_kernel = gpytorch.kernels.RBFKernel(
                 batch_shape=torch.Size([self.m]),
                 ard_num_dims=self.d,

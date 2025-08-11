@@ -275,9 +275,6 @@ class VOGP_AD(PALAlgorithm):
             `d1`, the Euclidean norm of the vector that gives `u_star` when normalized, *i.e.*, `z`.
         :rtype: Tuple[np.ndarray, float]
         """
-
-        # TODO: Convert to CVXPY and check if efficient.
-
         cone_matrix = self.order.ordering_cone.W
 
         n = cone_matrix.shape[0]
@@ -293,7 +290,6 @@ class VOGP_AD(PALAlgorithm):
 
         z_init = np.ones(self.m)  # Initial guess
         cons = [{"type": "ineq", "fun": lambda z: constraint_func(z)}]  # Constraints
-        # Solving the problem
         res = minimize(
             objective,
             z_init,
@@ -305,7 +301,7 @@ class VOGP_AD(PALAlgorithm):
         construe = np.all(constraint_func(res.x) + 1e-14)
 
         if not construe:
-            pass
+            raise ValueError("Could not compute the u_star vector for the given order.")
 
         return res.x / norm, norm
 
