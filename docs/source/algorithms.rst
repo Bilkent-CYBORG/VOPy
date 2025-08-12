@@ -46,6 +46,16 @@ Algorithms for Vector Optimization in Continuous Domains
     :members:
 
 
+Algorithms for Online Vector Optimization
+-------------------------------------------------
+
+:hidden:`PaVeBaGPOnline`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: PaVeBaGPOnline
+    :members:
+
+
 Algorithms for Vector Optimization with Decoupled Objectives
 -----------------------------------------------------------------
 
