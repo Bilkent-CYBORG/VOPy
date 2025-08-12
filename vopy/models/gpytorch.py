@@ -362,10 +362,10 @@ class GPyTorchMultioutputExactModel(GPyTorchModel, ABC):
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.model)
 
-        logging.info("Training started.")
+        logging.debug("Training started.")
         with gpytorch.settings.cholesky_max_tries(5), gpytorch.settings.cholesky_jitter(1e-4):
             fit_gpytorch_mll(mll)
-        logging.info("Training done.")
+        logging.debug("Training done.")
 
         self.model.eval()
         self.likelihood.eval()
@@ -933,9 +933,9 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
 
         mll = SumMarginalLogLikelihood(self.likelihood, self.model)
 
-        logging.info("Training started.")
+        logging.debug("Training started.")
         fit_gpytorch_mll(mll)
-        logging.info("Training done.")
+        logging.debug("Training done.")
 
         self.model.eval()
         self.likelihood.eval()

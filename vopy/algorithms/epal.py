@@ -187,16 +187,16 @@ class EpsilonPAL(PALAlgorithm):
 
         round_str = f"Round {self.round}"
 
-        logging.info(f"{round_str}:Modeling")
+        logging.debug(f"{round_str}:Modeling")
         self.modeling()
 
-        logging.info(f"{round_str}:Discarding")
+        logging.debug(f"{round_str}:Discarding")
         self.discarding()
 
-        logging.info(f"{round_str}:Epsilon-Covering")
+        logging.debug(f"{round_str}:Epsilon-Covering")
         self.epsiloncovering()
 
-        logging.info(f"{round_str}:Evaluating")
+        logging.debug(f"{round_str}:Evaluating")
         if self.S:  # If S_t is not empty
             self.evaluating()
 
@@ -207,7 +207,7 @@ class EpsilonPAL(PALAlgorithm):
 
         self.round += 1
 
-        logging.info(f"{round_str}:Sample count {self.sample_count}")
+        logging.debug(f"{round_str}:Sample count {self.sample_count}")
 
         return len(self.S) == 0
 

@@ -70,5 +70,5 @@ Gaussian Process Based Models
 Kernels
 -----------------------------------
 
-.. autoclass:: MixedHyperparameterKernel
+.. autoclass:: MixedKernel
     :members:

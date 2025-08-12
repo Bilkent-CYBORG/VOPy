@@ -11,9 +11,11 @@ class MixedKernel(gpytorch.kernels.Kernel):
     """
     Kernel that combines a Matern kernel and a categorical (Hamming) kernel. It contains two
     components (one additive and one multiplicative) that are added together as follows:
+
     K(x1, x2) =
         K_cont_1(x1[cont], x2[cont]) + K_cat_1(x1[cat], x2[cat])
         + K_cont_2(x1[cont], x2[cont]) * K_cat_2(x1[cat], x2[cat])
+
     where x1[cont], x1[cont] are continuous inputs and x1[cat], x2[cat] are categorical inputs.
 
     :param continuous_dims: Indices of continuous dimensions (used for continuous kernel).
