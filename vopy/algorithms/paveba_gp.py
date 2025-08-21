@@ -106,8 +106,8 @@ class PaVeBaGP(PALAlgorithm):
         self.model = get_gpytorch_model_w_known_hyperparams(
             model_class,
             self.problem,
-            noise_var,
             initial_sample_cnt=1,
+            noise_var=noise_var,
             X=dataset.in_data,
             Y=dataset.out_data,
         )
@@ -227,19 +227,19 @@ class PaVeBaGP(PALAlgorithm):
 
         round_str = f"Round {self.round}"
 
-        logging.info(f"{round_str}:Evaluating")
+        logging.debug(f"{round_str}:Evaluating")
         self.evaluating()
 
-        logging.info(f"{round_str}:Modeling")
+        logging.debug(f"{round_str}:Modeling")
         self.modeling()
 
-        logging.info(f"{round_str}:Discarding")
+        logging.debug(f"{round_str}:Discarding")
         self.discarding()
 
-        logging.info(f"{round_str}:Pareto update")
+        logging.debug(f"{round_str}:Pareto update")
         self.pareto_updating()
 
-        logging.info(f"{round_str}:Useful update")
+        logging.debug(f"{round_str}:Useful update")
         self.useful_updating()
 
         logging.info(
@@ -247,7 +247,7 @@ class PaVeBaGP(PALAlgorithm):
             f" {len(self.P)} designs in set P."
         )
 
-        logging.info(f"{round_str}:Sample count {self.sample_count}")
+        logging.debug(f"{round_str}:Sample count {self.sample_count}")
 
         return len(self.S) == 0
 

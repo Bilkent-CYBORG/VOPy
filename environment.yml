@@ -21,5 +21,9 @@ dependencies:
 - flake8-print
 - jupyter
 - pydocstyle
+- torchvision
+- optuna
+- fvcore
+- iopath
 - pip:
     - -r docs/requirements.txt

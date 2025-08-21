@@ -14,6 +14,12 @@ Evaluation Utilities
 .. automodule:: vopy.utils.evaluate
    :members:
 
+Transform Utilities
+---------------------------------
+
+.. automodule:: vopy.utils.transforms
+   :members:
+
 Plotting Utilities
 ---------------------------------
 

@@ -107,7 +107,7 @@ class VOGP_AD(PALAlgorithm):
         self.problem = problem
 
         self.model = get_gpytorch_model_w_known_hyperparams(
-            CorrelatedExactGPyTorchModel, self.problem, noise_var, initial_sample_cnt=1
+            CorrelatedExactGPyTorchModel, self.problem, initial_sample_cnt=1, noise_var=noise_var
         )
 
         self.u_star, self.d1 = self.compute_u_star()
@@ -224,16 +224,16 @@ class VOGP_AD(PALAlgorithm):
 
         self.beta = self.compute_beta()
 
-        logging.info(f"{round_str}:Modeling")
+        logging.debug(f"{round_str}:Modeling")
         self.modeling()
 
-        logging.info(f"{round_str}:Discarding")
+        logging.debug(f"{round_str}:Discarding")
         self.discarding()
 
-        logging.info(f"{round_str}:Epsilon-Covering")
+        logging.debug(f"{round_str}:Epsilon-Covering")
         self.epsiloncovering()
 
-        logging.info(f"{round_str}:Evaluating")
+        logging.debug(f"{round_str}:Evaluating")
         if self.S:  # If S_t is not empty
             self.evaluate_refine()
 
@@ -244,7 +244,7 @@ class VOGP_AD(PALAlgorithm):
 
         self.round += 1
 
-        logging.info(f"{round_str}:Sample count {self.sample_count}")
+        logging.debug(f"{round_str}:Sample count {self.sample_count}")
 
         return len(self.S) == 0
 
@@ -275,9 +275,6 @@ class VOGP_AD(PALAlgorithm):
             `d1`, the Euclidean norm of the vector that gives `u_star` when normalized, *i.e.*, `z`.
         :rtype: Tuple[np.ndarray, float]
         """
-
-        # TODO: Convert to CVXPY and check if efficient.
-
         cone_matrix = self.order.ordering_cone.W
 
         n = cone_matrix.shape[0]
@@ -293,7 +290,6 @@ class VOGP_AD(PALAlgorithm):
 
         z_init = np.ones(self.m)  # Initial guess
         cons = [{"type": "ineq", "fun": lambda z: constraint_func(z)}]  # Constraints
-        # Solving the problem
         res = minimize(
             objective,
             z_init,
@@ -305,7 +301,7 @@ class VOGP_AD(PALAlgorithm):
         construe = np.all(constraint_func(res.x) + 1e-14)
 
         if not construe:
-            pass
+            raise ValueError("Could not compute the u_star vector for the given order.")
 
         return res.x / norm, norm
 

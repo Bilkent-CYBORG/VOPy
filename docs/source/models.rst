@@ -66,3 +66,9 @@ Gaussian Process Based Models
 
 .. autoclass:: GPyTorchModelListExactModel
     :members:
+
+Kernels
+-----------------------------------
+
+.. autoclass:: MixedKernel
+    :members:

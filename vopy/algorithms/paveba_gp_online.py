@@ -1,121 +1,140 @@
 import logging
-from typing import Literal, Optional
+from typing import Optional
 
+import torch
+import gpytorch
 import numpy as np
 
-from vopy.acquisition import MaxVarianceDecoupledAcquisition, optimize_decoupled_acqf_discrete
+from vopy.acquisition import optimize_acqf_discrete, SumVarianceAcquisition
 from vopy.algorithms.algorithm import PALAlgorithm
 from vopy.confidence_region import confidence_region_is_covered, confidence_region_is_dominated
-from vopy.datasets import get_dataset_instance
 from vopy.design_space import FixedPointsDesignSpace
-from vopy.maximization_problem import DecoupledEvaluationProblem, ProblemFromDataset
-from vopy.models import get_gpytorch_modellist_w_known_hyperparams, GPyTorchModelListExactModel
+from vopy.maximization_problem import FixedPointsProblem
+from vopy.models import IndependentExactGPyTorchModel
 
+from vopy.models import Model
 from vopy.order import PolyhedralConeOrder
+from vopy.utils.transforms import NormalizeInput, StandardizeOutput
 
 
-class PaVeBaPartialGP(PALAlgorithm):
+class PaVeBaGPOnline(PALAlgorithm):
     """
-    Implement the partially observable GP-based Pareto Vector Bandits (PaVeBa) algorithm.
+    Implement the GP-based Pareto Vector Bandits (PaVeBa) algorithm for online optimization.
 
     :param epsilon: Determines the accuracy of the PAC-learning framework.
     :type epsilon: float
     :param delta: Determines the success probability of the PAC-learning framework.
     :type delta: float
-    :param dataset_name: Name of the dataset to be used.
-    :type dataset_name: str
+    :param problem: Problem instance to optimize on. It should be a :obj:`FixedPointsProblem`.
+    :type problem: FixedPointsProblem
     :param order: Order to be used.
     :type order: Order
-    :param noise_var: Variance of the Gaussian sampling noise.
-    :type noise_var: float
-    :param conf_contraction: Contraction coefficient to shrink the confidence
-        regions empirically. Defaults to 32.
+    :param conf_contraction: Contraction coefficient to shrink the
+        confidence regions empirically. Defaults to 32.
     :type conf_contraction: float
-    :param costs: Cost associated with sampling each objective. Defaults to None.
-    :type costs: Optional[list]
-    :param cost_budget: Cost budget for the algorithm. Defaults to None.
-    :type cost_budget: Optional[float]
-    :param confidence_type: Specifies if the algorithm uses ellipsoidal or
-        hyperrectangular confidence regions. Defaults to "hyperrectangle".
-    :type confidence_type: Literal["hyperrectangle", "hyperellipsoid"]
     :param batch_size: Number of samples to be taken in each round. Defaults to 1.
     :type batch_size: int
+    :param initial_sample_cnt: Number of initial samples to be taken before the algorithm starts.
+    :type initial_sample_cnt: int
+    :param reset_on_retrain: If True, resets the sets after each model retraining.
+        Defaults to False.
+    :type reset_on_retrain: bool
+    :param model: Predefined model to be used. If None, a default model is created.
+    :type model: Optional[Model]
 
-    The algorithm sequentially samples design rewards with a multivariate
-    white Gaussian noise whose diagonal entries are specified by the user.
-    It uses Gaussian Process regression to model the rewards and confidence
-    regions.
+    The algorithm sequentially samples design rewards. It uses Gaussian Process regression to model
+    the rewards and confidence regions. It retratins the model after every observation.
 
-    Example:
-        >>> from vopy.order import ComponentwiseOrder
-        >>> from vopy.algorithms import PaVeBaPartialGP
-        >>>
-        >>> epsilon, delta, noise_var = 0.1, 0.05, 0.01
-        >>> cost_budget = 64
-        >>> dataset_name = "DiscBrake"
-        >>> order_right = ComponentwiseOrder(2)
-        >>>
-        >>> algorithm = PaVeBaPartialGP(
-        >>>     epsilon, delta, dataset_name, order_right, noise_var, cost_budget=cost_budget
-        >>> )
-        >>>
-        >>> while True:
-        >>>     is_done = algorithm.run_one_step()
-        >>>
-        >>>     if is_done:
-        >>>          break
-        >>>
-        >>> pareto_indices = algorithm.P
+    Reference:
+        "Learning the Pareto Set Under Incomplete Preferences: Pure Exploration in Vector Bandits",
+        Karagözlü, Yıldırım, Ararat, Tekin, AISTATS, '24
+        https://proceedings.mlr.press/v238/karagozlu24a.html
     """
 
     def __init__(
         self,
         epsilon: float,
         delta: float,
-        dataset_name: str,
+        problem: FixedPointsProblem,
         order: PolyhedralConeOrder,
-        noise_var: float,
         conf_contraction: float = 32,
-        costs: Optional[list] = None,
-        cost_budget: Optional[float] = None,
-        confidence_type: Literal["hyperrectangle", "hyperellipsoid"] = "hyperrectangle",
         batch_size: int = 1,
+        initial_sample_cnt: int = 10,
+        reset_on_retrain: bool = False,
+        model: Optional[Model] = None,
     ) -> None:
         super().__init__(epsilon, delta)
 
         self.order = order
         self.batch_size = batch_size
         self.conf_contraction = conf_contraction
-        self.costs = np.array(costs) if costs is not None else costs
-        self.cost_budget = cost_budget if cost_budget is not None else np.inf
+        self.reset_on_retrain = reset_on_retrain
 
-        dataset = get_dataset_instance(dataset_name)
+        self.problem = problem
 
-        self.m = dataset.out_dim
+        self.d = self.problem.in_dim
+        self.m = self.problem.out_dim
 
         self.design_space = FixedPointsDesignSpace(
-            dataset.in_data, dataset.out_dim, confidence_type=confidence_type
+            self.problem.in_data, self.m, confidence_type="hyperrectangle"
         )
-        self.problem = DecoupledEvaluationProblem(ProblemFromDataset(dataset, noise_var))
 
-        self.model: GPyTorchModelListExactModel = get_gpytorch_modellist_w_known_hyperparams(
-            self.problem,
-            initial_sample_cnt=1,
-            noise_var=noise_var,
-            X=dataset.in_data,
-            Y=dataset.out_data,
-        )
+        if model is None:
+            mean_module = self.mean_module = gpytorch.means.ZeroMean(
+                batch_shape=torch.Size([self.m])
+            )
+
+            rbf_kernel = gpytorch.kernels.RBFKernel(
+                batch_shape=torch.Size([self.m]),
+                ard_num_dims=self.d,
+            )
+            covar_module = gpytorch.kernels.ScaleKernel(
+                rbf_kernel, batch_shape=torch.Size([self.m])
+            )
+
+            input_transform = NormalizeInput(self.d, bounds=self.problem.bounds)
+            output_transform = StandardizeOutput(self.m)
+            self.model = IndependentExactGPyTorchModel(
+                self.d,
+                self.m,
+                noise_rank=self.m,
+                input_transform=input_transform,
+                output_transform=output_transform,
+                mean_module=mean_module,
+                covar_module=covar_module,
+            )
+        else:
+            self.model = model
+
+        self.sample_count = 0
+        self.reset_sets()
+        self.round = 0
+
+        self.initial_sampling(initial_sample_cnt=initial_sample_cnt)
 
         self.cone_alpha = self.order.ordering_cone.alpha.flatten()
         self.cone_alpha_eps = self.cone_alpha * self.epsilon
 
+    def reset_sets(self):
         self.S = set(range(self.design_space.cardinality))
         self.P = set()
         self.U = set()
-        self.round = 0
-        # TODO: Initial samples are managed in model preparation, they're not taken into account.
-        self.sample_count = 0
-        self.total_cost = 0.0
+
+    def initial_sampling(self, initial_sample_cnt: int):
+        """
+        Initial sampling from the design space to start the algorithm.
+
+        :param initial_sample_cnt: Number of initial samples to be taken.
+        :type initial_sample_cnt: int
+        """
+        initial_indices = np.random.choice(len(self.problem.in_data), initial_sample_cnt)
+        initial_points = self.problem.in_data[initial_indices]
+        initial_values = self.problem.evaluate(initial_points)
+
+        self.model.add_sample(initial_points, initial_values)
+        self.model.update()
+        self.model.train()
+        self.sample_count += initial_sample_cnt
 
     def modeling(self):
         """
@@ -149,8 +168,8 @@ class PaVeBaPartialGP(PALAlgorithm):
 
     def pareto_updating(self):
         """
-        Identify the designs that are highly likely to be `epsilon`-optimal
-        using the confidence regions.
+        Identify the designs that are highly likely to be `epsilon`-optimal using
+        the confidence regions.
         """
         A = self.S.union(self.U)
 
@@ -196,22 +215,22 @@ class PaVeBaPartialGP(PALAlgorithm):
     def evaluating(self):
         """
         Observe the self.batch_size number of designs from active designs, selecting by
-        largest variance across designs and objectives and update the model.
+        largest sum of variances and update the model. If `self.reset_on_retrain` is True,
+        reset the running sets after retraining the model.
         """
         A = self.S.union(self.U)
-        acq = MaxVarianceDecoupledAcquisition(self.model, costs=self.costs)
+        acq = SumVarianceAcquisition(self.model)
         active_pts = self.design_space.points[list(A)]
-        candidate_list, acq_values, eval_indices = optimize_decoupled_acqf_discrete(
-            acq, self.batch_size, choices=active_pts
-        )
+        candidate_list, _ = optimize_acqf_discrete(acq, self.batch_size, choices=active_pts)
 
-        observations = self.problem.evaluate(candidate_list, eval_indices)
+        observations = self.problem.evaluate(candidate_list)
 
         self.sample_count += len(candidate_list)
-        if self.costs is not None:
-            self.total_cost += np.sum(self.costs[eval_indices])
-        self.model.add_sample(candidate_list, observations, eval_indices)
+        self.model.add_sample(candidate_list, observations)
         self.model.update()
+        self.model.train()
+        if self.reset_on_retrain:
+            self.reset_sets()
 
     def run_one_step(self) -> bool:
         """
@@ -220,7 +239,7 @@ class PaVeBaPartialGP(PALAlgorithm):
         :return: True if the algorithm is over, False otherwise.
         :rtype: bool
         """
-        if len(self.S) == 0 or self.total_cost >= self.cost_budget:
+        if len(self.S) == 0:
             return True
 
         self.round += 1
@@ -249,17 +268,17 @@ class PaVeBaPartialGP(PALAlgorithm):
 
         logging.debug(f"{round_str}:Sample count {self.sample_count}")
 
-        return len(self.S) == 0 or self.total_cost >= self.cost_budget
+        return len(self.S) == 0
 
-    def compute_alpha(self):
+    def compute_alpha(self) -> float:
         """
         Compute the radius of the confidence regions of the current round to be used in modeling.
 
         :return: The radius of the confidence regions.
         :rtype: float
         """
-        alpha = 2 * np.log(
-            (np.pi**2 * self.round**2 * self.design_space.cardinality) / (3 * self.delta)
+        alpha = 8 * self.m * np.log(6) + 4 * np.log(
+            (np.pi**2 * self.round**2 * self.design_space.cardinality) / (6 * self.delta)
         )
 
         return alpha / self.conf_contraction

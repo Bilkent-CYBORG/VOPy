@@ -33,7 +33,7 @@ class TestMultitaskExactGPModel(unittest.TestCase):
         self.X = torch.randn(10, 2)
         self.Y = torch.randn(10, 2)
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.Y.shape[-1])
-        self.model = MultitaskExactGPModel(self.X, self.Y, self.likelihood, RBFKernel)
+        self.model = MultitaskExactGPModel(self.X, self.Y, self.likelihood)
 
     def test_forward(self):
         """Test forward pass of MultitaskExactGPModel."""
@@ -50,7 +50,7 @@ class TestBatchIndependentExactGPModel(unittest.TestCase):
         self.X = torch.randn(10, 2)
         self.Y = torch.randn(10, 2)
         self.likelihood = GaussianLikelihood()
-        self.model = BatchIndependentExactGPModel(self.X, self.Y, self.likelihood, RBFKernel)
+        self.model = BatchIndependentExactGPModel(self.X, self.Y, self.likelihood)
 
     def test_forward(self):
         """Test forward pass of BatchIndependentExactGPModel."""
@@ -142,7 +142,7 @@ class TestCorrelatedExactGPyTorchModel(unittest.TestCase):
         noise_var = np.eye(2) * 0.1
         noise_var[noise_var == 0] = 0.05
         model = CorrelatedExactGPyTorchModel(input_dim=2, output_dim=2, noise_var=noise_var)
-        model.likelihood.rank = 2
+        self.assertEqual(model.likelihood.rank, 2)
 
 
 class TestIndependentExactGPyTorchModel(unittest.TestCase):
@@ -185,8 +185,8 @@ class TestGetGPyTorchModelWithKnownHyperparams(unittest.TestCase):
         model = get_gpytorch_model_w_known_hyperparams(
             model_class=CorrelatedExactGPyTorchModel,
             problem=self.problem,
-            noise_var=self.noise_var,
             initial_sample_cnt=self.initial_sample_cnt,
+            noise_var=self.noise_var,
             X=X,
             Y=Y,
         )
@@ -214,7 +214,7 @@ class TestSingleTaskGP(unittest.TestCase):
         self.X = torch.randn(10, 2)
         self.Y = torch.randn(10)
         self.likelihood = GaussianLikelihood()
-        self.model = SingleTaskGP(self.X, self.Y, self.likelihood, RBFKernel)
+        self.model = SingleTaskGP(self.X, self.Y, self.likelihood)
 
     def test_forward(self):
         """Test forward pass of SingleTaskGP."""

@@ -1,7 +1,9 @@
+import warnings
 from abc import ABC, abstractmethod
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from vopy.datasets import Dataset
 from vopy.utils import get_closest_indices_from_points, get_noisy_evaluations_chol
@@ -16,9 +18,17 @@ class Problem(ABC):
     for evaluating solutions in a given problem space.
 
     .. note::
-        Classes derived from :class:`Problem` must implement the :meth:`evaluate` method.
+        Classes derived from :class:`Problem` must implement the :meth:`evaluate` method. Also,
+        they should have the following attributes defined:
 
+    - :obj:`in_dim`: :type:`int`
+    - :obj:`out_dim`: :type:`int`
+    - :obj:`bounds`: :type:`List[Tuple[float, float]]`
     """
+
+    in_dim: int
+    out_dim: int
+    bounds: Union[np.ndarray, List[Tuple[float, float]]]
 
     def __init__(self) -> None:
         super().__init__()
@@ -36,7 +46,75 @@ class Problem(ABC):
         pass
 
 
-class ProblemFromDataset(Problem):
+class FixedPointsProblem(Problem):
+    """
+    Define an evaluatable optimization problem using fixed points and an objective function. Noise
+    is assumed to be intrinsic to the objective function.
+
+    :param in_points: The fixed input points to evaluate the objective function.
+    :type in_points: ArrayLike
+    :param out_dim: The dimension of the output space of the objective function.
+    :type out_dim: int
+    :param objective: The objective function to evaluate at the fixed input points.
+        Defaults to `None`.
+    :type objective: Optional[Callable[[ArrayLike], ArrayLike]]
+    :param bounds: Optional bounds for the input points, given as a 2D array of shape (in_dim, 2).
+        If not provided, bounds are inferred from the input points.
+    :type bounds: Optional[np.ndarray]
+    """
+
+    def __init__(
+        self,
+        in_points: ArrayLike,
+        out_dim: int,
+        objective: Optional[Callable[[ArrayLike], ArrayLike]] = None,
+        bounds: Optional[np.ndarray] = None,
+    ) -> None:
+        self.in_data = np.array(in_points)
+        self.objective = objective
+
+        self.in_dim = self.in_data.shape[1]
+        self.out_dim = out_dim
+
+        mins = np.min(self.in_data, axis=0, keepdims=True)
+        maxs = np.max(self.in_data, axis=0, keepdims=True)
+        if bounds is not None:
+            if bounds.shape != (self.in_dim, 2):
+                raise ValueError("Bounds must be a 2D array of shape (in_dim, 2).")
+            self.bounds = bounds
+        else:
+            self.bounds = np.concatenate([mins.reshape(-1, 1), maxs.reshape(-1, 1)], axis=1)
+
+        super().__init__()
+
+    def evaluate(self, x: np.ndarray) -> np.ndarray:
+        """
+        Evaluates the problem at given points.
+
+        :param x: The input points to evaluate, given as an array of shape (N, in_dim).
+        :type x: np.ndarray
+        :return: An array of shape (N, out_dim) representing the evaluated output.
+        :rtype: np.ndarray
+        """
+        if self.objective is None:
+            raise ValueError("Objective function for this FixedPointProblem is not defined.")
+
+        if x.ndim <= 1:
+            x = x.reshape(1, -1)
+
+        if x.ndim != 2:
+            raise ValueError("Input points must be 2D array.")
+
+        n_evals = x.shape[0]
+
+        y = np.empty((n_evals, self.out_dim))
+        for eval_i in range(n_evals):
+            y[eval_i] = self.objective(x[eval_i])
+
+        return y
+
+
+class ProblemFromDataset(FixedPointsProblem):
     """
     Define an evaluatable optimization problem using data from a given dataset.
 
@@ -50,12 +128,16 @@ class ProblemFromDataset(Problem):
     """
 
     def __init__(self, dataset: Dataset, noise_var: float) -> None:
-        super().__init__()
+        self.in_dim = dataset._in_dim
+        self.out_dim = dataset._out_dim
+        self.bounds = np.array([(0, 1)] * dataset._in_dim)
 
         self.dataset = dataset
         self.noise_var = noise_var
 
-        noise_covar = np.eye(self.dataset.out_dim) * noise_var
+        super().__init__(in_points=self.dataset.in_data, out_dim=self.out_dim, bounds=self.bounds)
+
+        noise_covar = np.eye(self.out_dim) * noise_var
         self.noise_cholesky = np.linalg.cholesky(noise_covar)
 
     def evaluate(self, x: np.ndarray, noisy: bool = True) -> np.ndarray:
@@ -87,23 +169,23 @@ class ProblemFromDataset(Problem):
 class ContinuousProblem(Problem):
     """
     Abstract base class for continuous optimization problems. It includes noise handling for
-    outputs based on a specified noise variance. It should have the following attribute defined:
+    outputs based on a specified noise variance.
 
-    - :obj:`out_dim`: :type:`int`
-
-    :param noise_var: The variance of the noise to be added to the outputs.
-    :type noise_var: float
+    :param noise_var: The variance of the noise to be added to the outputs. If the problem has
+        intrinsic noise, this should be set to `None`. Defaults to `None`.
+    :type noise_var: Optional[float]
     """
 
-    out_dim: int
-
-    def __init__(self, noise_var: float) -> None:
+    def __init__(self, noise_var: Optional[float]) -> None:
         super().__init__()
 
         self.noise_var = noise_var
 
-        noise_covar = np.eye(self.out_dim) * noise_var
-        self.noise_cholesky = np.linalg.cholesky(noise_covar)
+        if noise_var is not None:
+            noise_covar = np.eye(self.out_dim) * noise_var
+            self.noise_cholesky = np.linalg.cholesky(noise_covar)
+        else:
+            self.noise_cholesky = None
 
     @abstractmethod
     def evaluate_true(self, x: np.ndarray) -> np.ndarray:
@@ -130,19 +212,28 @@ class ContinuousProblem(Problem):
         if not noisy:
             return f
 
-        y = get_noisy_evaluations_chol(f, self.noise_cholesky)
+        if self.noise_cholesky is None:
+            warnings.warn(
+                "No noise applied to the output because noise_cholesky is None."
+                " This may indicate that the problem has intrinsic noise."
+                " If that is the case, call with `noisy=False`."
+            )
+            y = f
+        else:
+            y = get_noisy_evaluations_chol(f, self.noise_cholesky)
         return y
 
 
-def get_continuous_problem(name: str, noise_var: float) -> ContinuousProblem:
+def get_continuous_problem(name: str, noise_var: Optional[float] = None) -> ContinuousProblem:
     """
     Retrieves an instance of a continuous problem by name. If the
     problem name is not recognized, a ValueError is raised.
 
     :param name: The name of the continuous problem class to instantiate.
     :type name: str
-    :param noise_var: The variance of the noise to apply in the problem.
-    :type noise_var: float
+    :param noise_var: The variance of the noise to apply in the problem. If `None`, no additive
+        noise is applied. Defaults to `None`.
+    :type noise_var: Optional[float]
     :return: An instance of the specified continuous problem.
     :rtype: ContinuousProblem
 
@@ -170,7 +261,7 @@ class BraninCurrin(ContinuousProblem):
             Neural Information Processing Systems (NeurIPS), 2019.
     """
 
-    bounds = [(0.0, 1.0), (0.0, 1.0)]
+    bounds = np.array([(0.0, 1.0), (0.0, 1.0)])
     in_dim = len(bounds)
     out_dim = 2
     domain_discretization_each_dim = 33
@@ -238,7 +329,8 @@ class DecoupledEvaluationProblem(Problem):
     """
     Wrapper around a :class:`Problem` instance that allows for decoupled evaluations of
     objective functions. This class enables selective evaluation of specific objectives
-    by indexing into the output of the underlying problem.
+    by indexing into the output of the underlying problem. Therefore, this class is not
+    suitable for real-time evaluations of the underlying problem.
 
     :param problem: An instance of :class:`Problem` to wrap and decouple evaluations.
     :type problem: Problem

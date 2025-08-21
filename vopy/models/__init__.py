@@ -12,6 +12,7 @@ from vopy.models.gpytorch import (
     SingleTaskGP,
 )
 from vopy.models.model import GPModel, Model, ModelList, UncertaintyPredictiveModel
+from vopy.models.kernels import MixedKernel
 
 __all__ = [
     "Model",
@@ -29,4 +30,5 @@ __all__ = [
     "GPyTorchModelListExactModel",
     "get_gpytorch_modellist_w_known_hyperparams",
     "EmpiricalMeanVarModel",
+    "MixedKernel",
 ]

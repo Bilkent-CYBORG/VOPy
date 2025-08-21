@@ -1,12 +1,17 @@
 # Files
+.DS_Store
 .coverage
+coverage.xml
+uv.lock
 
 # Folders
 .vscode/
 __pycache__/
+.venv/
 
 dist/
 *.egg-info/
+build/
 docs/build/
 
 outputs/

@@ -15,5 +15,9 @@ flake8
 flake8-print
 jupyter
 pydocstyle
+torchvision
+optuna
+fvcore
+iopath
 
 -r docs/requirements.txt

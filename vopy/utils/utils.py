@@ -104,8 +104,8 @@ def get_alpha_vec(W: np.ndarray) -> np.ndarray:
 
 
 def get_closest_indices_from_points(
-    pts_to_find: Iterable,
-    pts_to_check: Iterable,
+    pts_to_find: np.ndarray,
+    pts_to_check: np.ndarray,
     return_distances: bool = False,
     squared: bool = False,
 ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
@@ -162,7 +162,7 @@ def get_noisy_evaluations_chol(means: np.ndarray, cholesky_cov: np.ndarray) -> n
 def generate_sobol_samples(dim: int, n: int) -> np.ndarray:
     """
     This method generates `n` samples from a Sobol sequence of dimension `dim`. `n` should be a
-    power of 2 in order to generate a balanced sequence.
+    power of 2 in order to generate a balanced sequence. Returned samples are in the range [0, 1).
 
     :param dim: The dimension of the Sobol sequence.
     :type dim: int

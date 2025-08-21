@@ -2,6 +2,7 @@ from os import PathLike
 from typing import Callable, Optional, Union
 
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 
@@ -9,7 +10,7 @@ from vopy.utils import get_2d_w
 
 
 def plot_2d_theta_cone(
-    cone_degree: float, path: Optional[Union[str, PathLike]] = None
+    cone_degree: float, path: Optional[Union[str, PathLike]] = None, show: bool = True
 ) -> plt.Figure:
     """
     Plot the 2D cone defined by the given cone degree, symmetric around :math:`y=x`.
@@ -21,6 +22,8 @@ def plot_2d_theta_cone(
     :type cone_degree: float
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
+    :param show: Whether to show the plot or close it. If False, the figure is closed.
+    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -86,13 +89,18 @@ def plot_2d_theta_cone(
     if path is not None:
         fig.savefig(path)
 
-    return fig
+    result_fig = fig
+    if not show:
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_2d_cone(
     cone_membership: Callable[[np.ndarray], np.ndarray],
     path: Optional[Union[str, PathLike]] = None,
     density: int = 50,
+    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the 2D cone by checking membership of the points in the cone.
@@ -108,6 +116,8 @@ def plot_2d_cone(
     :type path: Optional[Union[str, PathLike]]
     :param density: The number of points to sample along each axis for plotting.
     :type density: int
+    :param show: Whether to show the plot or close it. If False, the figure is closed.
+    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -124,8 +134,8 @@ def plot_2d_cone(
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    ax.plot([xlim[0], xlim[1]], [0, 0], [0, 0], color="black")
-    ax.plot([0, 0], [ylim[0], ylim[1]], [0, 0], color="black")
+    ax.plot([xlim[0], xlim[1]], [0, 0], color="black")
+    ax.plot([0, 0], [ylim[0], ylim[1]], color="black")
 
     x_pts = np.linspace(xlim[0], xlim[1], density)
     y_pts = np.linspace(ylim[0], ylim[1], density)
@@ -140,13 +150,18 @@ def plot_2d_cone(
     if path is not None:
         fig.savefig(path)
 
-    return fig
+    result_fig = fig
+    if not show:
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_3d_cone(
     cone_membership: Callable[[np.ndarray], np.ndarray],
     path: Optional[Union[str, PathLike]] = None,
     density: int = 50,
+    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the 3D cone by checking membership of the points in the cone.
@@ -162,10 +177,11 @@ def plot_3d_cone(
     :type path: Optional[Union[str, PathLike]]
     :param density: The number of points to sample along each axis for plotting.
     :type density: int
+    :param show: Whether to show the plot or close it. If False, the figure is closed.
+    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
-
     xlim = [-5, 5]
     ylim = [-5, 5]
     zlim = [-5, 5]
@@ -201,11 +217,18 @@ def plot_3d_cone(
     if path is not None:
         fig.savefig(path)
 
-    return fig
+    result_fig = fig
+    if not show:
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_pareto_front(
-    elements: np.ndarray, pareto_indices: np.ndarray, path: Optional[Union[str, PathLike]] = None
+    elements: np.ndarray,
+    pareto_indices: np.ndarray,
+    path: Optional[Union[str, PathLike]] = None,
+    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the Pareto front for a given set of elements.
@@ -220,6 +243,8 @@ def plot_pareto_front(
     :type pareto_indices: np.ndarray
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
+    :param show: Whether to show the plot or close it. If False, the figure is closed.
+    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
 
@@ -298,11 +323,18 @@ def plot_pareto_front(
     if path is not None:
         fig.savefig(path)
 
-    return fig
+    result_fig = fig
+    if not show:
+        plt.close(fig)
+
+    return result_fig
 
 
 def plot_cells_with_centers(
-    cells: np.ndarray, centers: np.ndarray, path: Optional[Union[str, PathLike]] = None
+    cells: np.ndarray,
+    centers: np.ndarray,
+    path: Optional[Union[str, PathLike]] = None,
+    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the given cells with their corresponding centers. The plot is created using
@@ -314,10 +346,11 @@ def plot_cells_with_centers(
     :type centers: np.ndarray
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
+    :param show: Whether to show the plot or close it. If False, the figure is closed.
+    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
-
     dim = centers.shape[1]
     if dim != 2:
         raise NotImplementedError("Visualization of cells is only implemented for 2D data.")
@@ -343,4 +376,8 @@ def plot_cells_with_centers(
     if path is not None:
         fig.savefig(path)
 
-    return fig
+    result_fig = fig
+    if not show:
+        plt.close(fig)
+
+    return result_fig
