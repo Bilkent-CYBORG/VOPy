@@ -39,7 +39,7 @@ pip install --upgrade git+https://github.com/Bilkent-CYBORG/VOPy.git
 
 #### Manual installation (for development)
 
-If you'd like to contribute, please follow [CONTRIBUTING.md](CONTRIBUTING.md)
+If you'd like to contribute, please follow [CONTRIBUTING.md](CONTRIBUTING.md).
 
 If you want a manual installation:
 
@@ -59,6 +59,10 @@ Further, installing the pre-commit hooks are **highly** encouraged.
 # Inside the package folder
 pre-commit install
 ```
+
+### Contributing
+
+Follow [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### **Citing**
 
