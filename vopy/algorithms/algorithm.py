@@ -10,7 +10,7 @@ class Algorithm(ABC):
         super().__init__()
 
     @abstractmethod
-    def run_one_step(self):
+    def run_one_step(self) -> bool:
         pass
 
 
@@ -33,5 +33,5 @@ class PALAlgorithm(Algorithm, ABC):
         # TODO: Maybe make sample_count an ABC property. Will every child have it?
 
     @abstractmethod
-    def run_one_step(self):
+    def run_one_step(self) -> bool:
         pass

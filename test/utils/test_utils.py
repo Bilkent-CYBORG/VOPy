@@ -405,38 +405,38 @@ class TestIsPtInExtendedPolytope(TestCase):
         # Inside the polytope
         points_inside = [np.array([0.5, 0.5]), np.array([0.1, 0.1]), np.array([0.9, 0.9])]
         for pt in points_inside:
-            with self.subTest(pt=pt):
+            with self.subTest():
                 self.assertTrue(is_pt_in_extended_polytope(pt, polytope))
 
         # Outside the polytope
         points_outside = [np.array([-0.1, 0.5]), np.array([0.5, -0.1])]
         for pt in points_outside:
-            with self.subTest(pt=pt):
+            with self.subTest():
                 self.assertFalse(is_pt_in_extended_polytope(pt, polytope))
 
         # Inside the extended polytope
         points_extended = [np.array([1.5, 0.5]), np.array([0.5, 1.5])]
         for pt in points_extended:
-            with self.subTest(pt=pt):
+            with self.subTest():
                 self.assertTrue(is_pt_in_extended_polytope(pt, polytope))
 
         # Inside the inverted extended polytope
         points_inverted_extended = [np.array([-0.5, 0.5]), np.array([0.5, -0.5])]
         for pt in points_inverted_extended:
-            with self.subTest(pt=pt):
+            with self.subTest():
                 self.assertTrue(is_pt_in_extended_polytope(pt, polytope, invert_extension=True))
 
         # Outside the inverted extended polytope
         points_outside_inverted_extended = [np.array([1.5, 0.5]), np.array([0.5, 1.5])]
         for pt in points_outside_inverted_extended:
-            with self.subTest(pt=pt):
+            with self.subTest():
                 self.assertFalse(is_pt_in_extended_polytope(pt, polytope, invert_extension=True))
 
         # Inside the extended parallelogram polytope
         polytope = np.array([[0, 0], [1, 0], [-0.5, 1], [0.5, 1]])
         points_extended = [np.array([-0.25, 0.5])]
         for pt in points_extended:
-            with self.subTest(pt=pt):
+            with self.subTest():
                 self.assertTrue(is_pt_in_extended_polytope(pt, polytope))
 
 

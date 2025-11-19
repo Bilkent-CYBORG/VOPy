@@ -39,16 +39,19 @@ pip install --upgrade git+https://github.com/Bilkent-CYBORG/VOPy.git
 
 #### Manual installation (for development)
 
-If you are contributing a pull request, it is best to perform a manual installation:
+If you'd like to contribute, please follow [CONTRIBUTING.md](CONTRIBUTING.md)
+
+If you want a manual installation:
 
 ```sh
 git clone https://github.com/Bilkent-CYBORG/VOPy.git
 cd VOPy
-mamba env create --name vopy --file environment.yml  # To setup a proper development environment
-pip install -e .
+uv sync --all-extras  # Install all dependencies
+# OR for specific dependency groups
+# pip install -e ".[dev,test]"
 ```
 
-For all development requirements, see [requirements.txt](requirements.txt) or [environment.yml](environment.yml).
+For all dependencies, see [pyproject.toml](pyproject.toml). Legacy files [requirements.txt](requirements.txt) and [environment.yml](environment.yml) are also maintained.
 
 Further, installing the pre-commit hooks are **highly** encouraged.
 
