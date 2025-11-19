@@ -1,19 +1,16 @@
 import logging
 from abc import ABC
-
 from typing import List, Literal, Optional, Union
-from numpy.typing import ArrayLike
 
 import gpytorch
-
 import numpy as np
-
 import torch
 from botorch.fit import fit_gpytorch_mll
 from gpytorch.mlls import SumMarginalLogLikelihood
+from numpy.typing import ArrayLike
+
 from vopy.maximization_problem import Problem
 from vopy.models.model import GPModel, ModelList
-
 from vopy.utils.transforms import InputTransform, OutputTransform
 from vopy.utils.utils import generate_sobol_samples
 
@@ -781,17 +778,17 @@ class GPyTorchModelListExactModel(GPyTorchModel, ModelList):
 
         self.likelihoods = []
         for i in range(self.output_dim):
-            l = gpytorch.likelihoods.GaussianLikelihood(
+            lik = gpytorch.likelihoods.GaussianLikelihood(
                 noise_constraint=gpytorch.constraints.GreaterThan(1e-10),
             ).to(self.device)
 
             if self.noise_var is not None:
-                l.noise = self.noise_var[i]
-                l.requires_grad_(False)
+                lik.noise = self.noise_var[i]
+                lik.requires_grad_(False)
             else:
-                l.requires_grad_(True)
+                lik.requires_grad_(True)
 
-            self.likelihoods.append(l)
+            self.likelihoods.append(lik)
 
         if isinstance(mean_modules, list):
             if len(mean_modules) != self.output_dim:

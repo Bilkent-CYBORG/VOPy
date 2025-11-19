@@ -6,7 +6,6 @@ import numpy as np
 from vopy.algorithms.algorithm import PALAlgorithm
 from vopy.datasets import get_dataset_instance
 from vopy.maximization_problem import ProblemFromDataset
-
 from vopy.order import PolyhedralConeOrder
 
 

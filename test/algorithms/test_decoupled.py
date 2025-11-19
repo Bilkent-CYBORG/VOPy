@@ -3,7 +3,6 @@ from unittest import TestCase
 from vopy.algorithms import DecoupledGP
 from vopy.datasets import get_dataset_instance
 from vopy.order import ComponentwiseOrder
-
 from vopy.utils import set_seed
 from vopy.utils.evaluate import calculate_epsilonF1_score
 from vopy.utils.seed import SEED

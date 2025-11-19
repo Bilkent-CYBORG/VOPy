@@ -14,7 +14,6 @@ from vopy.models import (
     get_gpytorch_model_w_known_hyperparams,
     IndependentExactGPyTorchModel,
 )
-
 from vopy.order import PolyhedralConeOrder
 
 

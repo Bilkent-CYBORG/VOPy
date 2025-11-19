@@ -1,10 +1,9 @@
-from typing import Tuple, Optional
-
-import torch
+from typing import Optional, Tuple
 
 import gpytorch
-from gpytorch.kernels import MaternKernel, ScaleKernel
+import torch
 from botorch.models.kernels.categorical import CategoricalKernel
+from gpytorch.kernels import MaternKernel, ScaleKernel
 
 
 class MixedKernel(gpytorch.kernels.Kernel):

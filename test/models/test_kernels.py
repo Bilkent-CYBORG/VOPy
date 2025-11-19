@@ -2,9 +2,7 @@ import unittest
 
 import torch
 from scipy.linalg import issymmetric
-
 from vopy.models.kernels import MixedKernel
-
 from vopy.utils import set_seed
 from vopy.utils.seed import SEED
 

@@ -6,7 +6,6 @@ import numpy as np
 
 from vopy.design_space import DiscreteDesignSpace
 from vopy.models import Model, ModelList
-
 from vopy.order import PolyhedralConeOrder
 from vopy.utils import binary_entropy
 

@@ -1,18 +1,16 @@
 import logging
 from typing import Optional
 
-import torch
 import gpytorch
 import numpy as np
+import torch
 
 from vopy.acquisition import optimize_acqf_discrete, SumVarianceAcquisition
 from vopy.algorithms.algorithm import PALAlgorithm
 from vopy.confidence_region import confidence_region_is_covered, confidence_region_is_dominated
 from vopy.design_space import FixedPointsDesignSpace
 from vopy.maximization_problem import FixedPointsProblem
-from vopy.models import IndependentExactGPyTorchModel
-
-from vopy.models import Model
+from vopy.models import IndependentExactGPyTorchModel, Model
 from vopy.order import PolyhedralConeOrder
 from vopy.utils.transforms import NormalizeInput, StandardizeOutput
 

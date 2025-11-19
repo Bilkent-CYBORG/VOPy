@@ -4,7 +4,6 @@ import numpy as np
 from vopy.algorithms import PaVeBaGP
 from vopy.datasets import get_dataset_instance
 from vopy.order import ComponentwiseOrder
-
 from vopy.utils import set_seed
 from vopy.utils.evaluate import calculate_epsilonF1_score
 from vopy.utils.seed import SEED

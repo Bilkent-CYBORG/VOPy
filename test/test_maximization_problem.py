@@ -9,7 +9,6 @@ from vopy.maximization_problem import (
     get_continuous_problem,
     ProblemFromDataset,
 )
-
 from vopy.utils import set_seed
 from vopy.utils.seed import SEED
 

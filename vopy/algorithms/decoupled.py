@@ -7,7 +7,6 @@ from vopy.algorithms.algorithm import Algorithm
 from vopy.datasets import get_dataset_instance
 from vopy.maximization_problem import DecoupledEvaluationProblem, ProblemFromDataset
 from vopy.models import get_gpytorch_modellist_w_known_hyperparams, GPyTorchModelListExactModel
-
 from vopy.order import PolyhedralConeOrder
 
 

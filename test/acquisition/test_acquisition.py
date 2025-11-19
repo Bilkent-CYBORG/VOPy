@@ -11,7 +11,6 @@ from vopy.acquisition import (
 )
 from vopy.design_space import FixedPointsDesignSpace
 from vopy.models.gpytorch import GPyTorchModelListExactModel
-
 from vopy.order import PolyhedralConeOrder
 from vopy.ordering_cone import OrderingCone
 from vopy.utils import set_seed

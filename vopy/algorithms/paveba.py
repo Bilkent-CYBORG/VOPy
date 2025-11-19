@@ -8,7 +8,6 @@ from vopy.datasets import get_dataset_instance
 from vopy.design_space import FixedPointsDesignSpace
 from vopy.maximization_problem import ProblemFromDataset
 from vopy.models import EmpiricalMeanVarModel
-
 from vopy.order import PolyhedralConeOrder
 
 

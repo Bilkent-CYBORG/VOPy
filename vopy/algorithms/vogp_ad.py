@@ -13,7 +13,6 @@ from vopy.confidence_region import (
 from vopy.design_space import AdaptivelyDiscretizedDesignSpace
 from vopy.maximization_problem import ContinuousProblem
 from vopy.models import CorrelatedExactGPyTorchModel, get_gpytorch_model_w_known_hyperparams
-
 from vopy.order import PolyhedralConeOrder
 
 

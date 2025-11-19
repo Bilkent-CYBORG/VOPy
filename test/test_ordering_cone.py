@@ -1,7 +1,6 @@
 from unittest import mock, TestCase
 
 import numpy as np
-
 from vopy.ordering_cone import ConeTheta2D, OrderingCone
 
 

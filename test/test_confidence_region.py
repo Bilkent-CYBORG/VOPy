@@ -3,7 +3,6 @@ from unittest import TestCase
 
 import numpy as np
 from vopy.confidence_region import EllipsoidalConfidenceRegion, RectangularConfidenceRegion
-
 from vopy.order import ComponentwiseOrder
 
 

@@ -9,7 +9,6 @@ from vopy.order import (
     ConeTheta2DOrder,
     PolyhedralConeOrder,
 )
-
 from vopy.ordering_cone import ConeTheta2D, OrderingCone
 
 

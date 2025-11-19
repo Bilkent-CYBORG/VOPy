@@ -4,7 +4,6 @@ import numpy as np
 from vopy.algorithms import VOGP_AD
 from vopy.maximization_problem import ContinuousProblem, get_continuous_problem
 from vopy.order import ComponentwiseOrder
-
 from vopy.utils import set_seed
 from vopy.utils.evaluate import calculate_hypervolume_discrepancy_for_model
 from vopy.utils.seed import SEED

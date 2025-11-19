@@ -2,7 +2,6 @@ import importlib
 import unittest
 
 import numpy as np
-
 from vopy.datasets import Dataset, get_dataset_instance
 
 

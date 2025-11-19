@@ -2,7 +2,6 @@ from os import PathLike
 from typing import Callable, Optional, Union
 
 import numpy as np
-import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 

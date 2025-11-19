@@ -1,9 +1,7 @@
 from unittest import mock, TestCase
 
 import numpy as np
-
 import torch
-
 from vopy.datasets import get_dataset_instance
 from vopy.utils import (
     binary_entropy,

@@ -6,7 +6,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from vopy.ordering_cone import ConeTheta2D, OrderingCone
-
 from vopy.utils.plotting import plot_pareto_front
 
 

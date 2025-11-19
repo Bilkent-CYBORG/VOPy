@@ -11,8 +11,8 @@ from vopy.models.gpytorch import (
     MultitaskExactGPModel,
     SingleTaskGP,
 )
-from vopy.models.model import GPModel, Model, ModelList, UncertaintyPredictiveModel
 from vopy.models.kernels import MixedKernel
+from vopy.models.model import GPModel, Model, ModelList, UncertaintyPredictiveModel
 
 __all__ = [
     "Model",

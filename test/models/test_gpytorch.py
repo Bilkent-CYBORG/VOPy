@@ -3,11 +3,9 @@ import unittest
 import numpy as np
 import torch
 from gpytorch.distributions import MultitaskMultivariateNormal, MultivariateNormal
-from gpytorch.kernels import RBFKernel
 from gpytorch.likelihoods import GaussianLikelihood, MultitaskGaussianLikelihood
 from scipy.linalg import issymmetric
 from vopy.maximization_problem import Problem
-
 from vopy.models.gpytorch import (
     BatchIndependentExactGPModel,
     CorrelatedExactGPyTorchModel,
@@ -19,7 +17,6 @@ from vopy.models.gpytorch import (
     MultitaskExactGPModel,
     SingleTaskGP,
 )
-
 from vopy.utils import set_seed
 from vopy.utils.seed import SEED
 

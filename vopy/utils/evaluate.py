@@ -1,12 +1,10 @@
 import numpy as np
-
 import torch
 from botorch.utils.multi_objective.hypervolume import Hypervolume
 
 from vopy.datasets import Dataset
 from vopy.maximization_problem import ContinuousProblem
 from vopy.models import Model
-
 from vopy.order import PolyhedralConeOrder
 from vopy.utils import generate_sobol_samples, get_delta, get_uncovered_size
 

@@ -13,7 +13,6 @@ from vopy.datasets import get_dataset_instance
 from vopy.design_space import FixedPointsDesignSpace
 from vopy.maximization_problem import ProblemFromDataset
 from vopy.models import get_gpytorch_model_w_known_hyperparams, IndependentExactGPyTorchModel
-
 from vopy.order import ComponentwiseOrder
 
 
