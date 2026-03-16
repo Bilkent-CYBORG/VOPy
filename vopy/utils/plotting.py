@@ -9,7 +9,7 @@ from vopy.utils import get_2d_w
 
 
 def plot_2d_theta_cone(
-    cone_degree: float, path: Optional[Union[str, PathLike]] = None, show: bool = True
+    cone_degree: float, path: Optional[Union[str, PathLike]] = None
 ) -> plt.Figure:
     """
     Plot the 2D cone defined by the given cone degree, symmetric around :math:`y=x`.
@@ -21,8 +21,6 @@ def plot_2d_theta_cone(
     :type cone_degree: float
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
-    :param show: Whether to show the plot or close it. If False, the figure is closed.
-    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -88,18 +86,13 @@ def plot_2d_theta_cone(
     if path is not None:
         fig.savefig(path)
 
-    result_fig = fig
-    if not show:
-        plt.close(fig)
-
-    return result_fig
+    return fig
 
 
 def plot_2d_cone(
     cone_membership: Callable[[np.ndarray], np.ndarray],
     path: Optional[Union[str, PathLike]] = None,
     density: int = 50,
-    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the 2D cone by checking membership of the points in the cone.
@@ -115,8 +108,6 @@ def plot_2d_cone(
     :type path: Optional[Union[str, PathLike]]
     :param density: The number of points to sample along each axis for plotting.
     :type density: int
-    :param show: Whether to show the plot or close it. If False, the figure is closed.
-    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -149,18 +140,13 @@ def plot_2d_cone(
     if path is not None:
         fig.savefig(path)
 
-    result_fig = fig
-    if not show:
-        plt.close(fig)
-
-    return result_fig
+    return fig
 
 
 def plot_3d_cone(
     cone_membership: Callable[[np.ndarray], np.ndarray],
     path: Optional[Union[str, PathLike]] = None,
     density: int = 50,
-    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the 3D cone by checking membership of the points in the cone.
@@ -176,8 +162,6 @@ def plot_3d_cone(
     :type path: Optional[Union[str, PathLike]]
     :param density: The number of points to sample along each axis for plotting.
     :type density: int
-    :param show: Whether to show the plot or close it. If False, the figure is closed.
-    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -216,18 +200,13 @@ def plot_3d_cone(
     if path is not None:
         fig.savefig(path)
 
-    result_fig = fig
-    if not show:
-        plt.close(fig)
-
-    return result_fig
+    return fig
 
 
 def plot_pareto_front(
     elements: np.ndarray,
     pareto_indices: np.ndarray,
     path: Optional[Union[str, PathLike]] = None,
-    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the Pareto front for a given set of elements.
@@ -242,8 +221,6 @@ def plot_pareto_front(
     :type pareto_indices: np.ndarray
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
-    :param show: Whether to show the plot or close it. If False, the figure is closed.
-    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
 
@@ -322,18 +299,13 @@ def plot_pareto_front(
     if path is not None:
         fig.savefig(path)
 
-    result_fig = fig
-    if not show:
-        plt.close(fig)
-
-    return result_fig
+    return fig
 
 
 def plot_cells_with_centers(
     cells: np.ndarray,
     centers: np.ndarray,
     path: Optional[Union[str, PathLike]] = None,
-    show: bool = True,
 ) -> plt.Figure:
     """
     Plot the given cells with their corresponding centers. The plot is created using
@@ -345,8 +317,6 @@ def plot_cells_with_centers(
     :type centers: np.ndarray
     :param path: The file path where the plot will be saved. If None, the plot is not saved.
     :type path: Optional[Union[str, PathLike]]
-    :param show: Whether to show the plot or close it. If False, the figure is closed.
-    :type show: bool
     :return: The Matplotlib figure object containing the plot.
     :rtype: plt.Figure
     """
@@ -375,8 +345,4 @@ def plot_cells_with_centers(
     if path is not None:
         fig.savefig(path)
 
-    result_fig = fig
-    if not show:
-        plt.close(fig)
-
-    return result_fig
+    return fig
