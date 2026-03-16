@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+
+## [v0.2.0](https://github.com/Bilkent-CYBORG/VOPy/compare/v0.1.4...v0.2.0) - 2026-03-16
+
 - Add newer versions of Python (3.10, 3.11, 3.12) to CI matrix
 - Update `setup-python` action to v5
 - Remove `show` parameter from plotting functions
